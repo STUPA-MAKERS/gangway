@@ -15,7 +15,14 @@
   - `networking.wireless` — wpa_supplicant with the "Iphone Hotspot" and
     "freeCampus" networks. Both passwords come from the `wifi-env` secret in
     secrets/gangway.yaml, which holds one `name=password` line per network.
-    wpa_supplicant then never writes a password into the Nix store
+    wpa_supplicant then never writes a password into the Nix store.
+    "Iphone Hotspot" is the name of the FRITZ!Box network at the site
+  - `hardware.wirelessRegulatoryDatabase`, `cfg80211.ieee80211_regdom` and
+    `country=DE` — the German radio rules, as the old install set in
+    cmdline.txt. Without them the WiFi chip uses the world rules, which
+    leave out channels 12 and 13 and the DFS channels at 5 GHz. A FRITZ!Box
+    on an automatic channel can use those channels, and the Pi then does
+    not see the network
   - `services.dnsmasq` — DHCP and DNS on eth0 only. 10.0.0.2 to 10.0.0.254,
     with the Pi as router and DNS server. `resolveLocalQueries` is off, so
     the Pi itself keeps using systemd-resolved
@@ -54,8 +61,12 @@
 
       sops.secrets.wifi-env.restartUnits = [ "wpa_supplicant.service" ];
 
+      hardware.wirelessRegulatoryDatabase = true;
+      boot.kernelParams = [ "cfg80211.ieee80211_regdom=DE" ];
+
       networking.wireless = {
         enable = true;
+        extraConfig = "country=DE";
         interfaces = [ "wlan0" ];
         secretsFile = config.sops.secrets.wifi-env.path;
         networks = {

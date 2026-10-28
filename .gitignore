@@ -19,3 +19,6 @@ dist/
 
 # Inter font, which the Nix build and `nix develop` copy in place
 /frontend/app/fonts/
+
+# Local password files, which belong in secrets/ through sops
+*.password

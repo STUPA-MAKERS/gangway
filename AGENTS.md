@@ -17,7 +17,8 @@ Gangway is a Python-based lighting control system for an interactive art install
 
 ### 3. Animation System (`./gangway/animations/`)
 - **Procedural Approach**: Animations are functions that take `(time, context, led, objects)` and return a color (`RGBCCT`).
-- **Meta-Animations (`meta.py`)**: High-order functions that compose other animations. Examples include `blend`, `schedule`, `alternate`, and `proximity`.
+- **Layout**: `idle/`, `responsive/` and `meta/` are packages with one animation per module, or a small group of similar ones. The registry in `config.py` reads `__all__` of each package, so export a new animation there.
+- **Meta-Animations (`meta/`)**: High-order functions that compose other animations. Examples include `blend`, `schedule`, `alternate`, and `proximity`.
 - **Responsive**: Animations receive a list of detected objects (`Point`s) to react to presence.
 
 ### 4. Hardware Driver

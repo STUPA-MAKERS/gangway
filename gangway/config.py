@@ -1,6 +1,5 @@
 """Load the installation config and build the LED layout from it."""
 
-import inspect
 import os
 import threading
 from pathlib import Path
@@ -78,12 +77,9 @@ class ConfigFile(TypedDict, total=False):
 
 def _get_animation_functions() -> dict[str, AnimationFactory]:
     functions: dict[str, AnimationFactory] = {}
-    for module in (idle, responsive, meta):
-        for name, func in inspect.getmembers(module, inspect.isfunction):
-            # Register only the functions that the module defines. Imported
-            # helpers are not animations.
-            if not name.startswith("_") and func.__module__ == module.__name__:
-                functions[name] = func
+    for package in (idle, responsive, meta):
+        for name in package.__all__:
+            functions[name] = getattr(package, name)
     functions["RGBCCT"] = RGBCCT
     return functions
 

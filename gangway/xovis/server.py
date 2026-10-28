@@ -17,9 +17,23 @@ from .model import DeleteTrack, Event, EventObject, create_events_from_json
 
 def create_xovis_request_handler(server: "XOVISServer"):
     class RequestHandler(BaseHTTPRequestHandler):
+        def _read_body(self) -> bytes:
+            # The sensor can send a chunked body with no Content-Length.
+            if "chunked" in self.headers.get("Transfer-Encoding", "").lower():
+                chunks = []
+                while True:
+                    size = int(self.rfile.readline().split(b";")[0].strip(), 16)
+                    if size == 0:
+                        # Skip the trailer section up to the empty line.
+                        while self.rfile.readline() not in (b"\r\n", b"\n", b""):
+                            pass
+                        return b"".join(chunks)
+                    chunks.append(self.rfile.read(size))
+                    self.rfile.readline()
+            return self.rfile.read(int(self.headers.get("Content-Length", 0)))
+
         def do_POST(self):
-            content_length = int(self.headers["Content-Length"])
-            post_data = self.rfile.read(content_length)
+            post_data = self._read_body()
 
             try:
                 data = json.loads(post_data)

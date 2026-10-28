@@ -4,6 +4,7 @@ Definitions for LED positions
 """
 
 import inspect
+import os
 import threading
 from pathlib import Path
 from typing import List, Tuple
@@ -125,5 +126,9 @@ class GANGWAYConfig:
                 yaml.dump(config, f)
 
 
-# Global config instance
-CONFIG = GANGWAYConfig(Path(__file__).parent.parent / "config.yaml")
+# Global config instance. GANGWAY_CONFIG names a config file outside the source
+# tree. The presets directory is next to it, and the modules that read presets
+# resolve that path at import time, so --config is too late for them.
+CONFIG = GANGWAYConfig(
+    Path(os.environ.get("GANGWAY_CONFIG", Path(__file__).parent.parent / "config.yaml"))
+)

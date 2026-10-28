@@ -1,8 +1,10 @@
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
 
-const inter = Inter({ subsets: ["latin"] });
+// The Nix build copies InterVariable.ttf into app/fonts. For local development,
+// copy it from the Inter font package, or run `nix develop`, which does it.
+const inter = localFont({ src: "./fonts/InterVariable.ttf" });
 
 export const metadata = {
     applicationName: "Gangway",

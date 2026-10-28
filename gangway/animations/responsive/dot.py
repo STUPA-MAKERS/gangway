@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from rpi_ws2805 import RGBCCT
 
 from ...types import LED, Animation, AnimationOrColor, SceneContext, TrackedPoint
+from .._common import render_pair
 from ..idle import wave
 
 _DOT_PRIMARY = wave([RGBCCT(r=255)])
@@ -35,19 +36,9 @@ def dot(
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        primary_rgbcct = (
-            primary if isinstance(primary, RGBCCT) else primary(time, ctx, led, objects)
-        )
-        secondary_rgbcct = (
-            secondary
-            if isinstance(secondary, RGBCCT)
-            else secondary(time, ctx, led, objects)
-        )
-
+        inside, outside = render_pair(primary, secondary, time, ctx, led, objects)
         return (
-            primary_rgbcct
-            if any((led.p - obj).length < radius for obj in objects)
-            else secondary_rgbcct
+            inside if any((led.p - obj).length < radius for obj in objects) else outside
         )
 
     return animation

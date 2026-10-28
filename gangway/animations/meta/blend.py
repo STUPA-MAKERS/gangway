@@ -1,32 +1,48 @@
 """The `blend` animation."""
 
-from collections.abc import Sequence
-from typing import Literal
+from collections.abc import Callable, Sequence
 
 from rpi_ws2805 import RGBCCT
 
+from ...helpers import render
 from ...types import (
     LED,
     Animation,
     AnimationOrColor,
+    BlendMode,
     SceneContext,
     TrackedPoint,
 )
+from .._common import channels, dark
+
+
+def _average(values: tuple[int, ...]) -> int:
+    return int(sum(values) / len(values))
+
+
+def _highest(values: tuple[int, ...]) -> int:
+    return max(values)
 
 
 def blend(
-    *animations: AnimationOrColor, mode: Literal["average", "max"] = "average"
+    *animations: AnimationOrColor, mode: BlendMode = BlendMode.AVERAGE
 ) -> Animation:
     """Mix the colors of animations channel by channel.
 
     Args:
         *animations: The animations to mix.
-        mode: ``"average"`` uses the mean of each channel. ``"max"`` uses the
-            highest value of each channel.
+        mode: `BlendMode.AVERAGE` uses the mean of each channel.
+            `BlendMode.MAX` uses the highest value of each channel.
 
     Returns:
         The animation. With no animations, all LEDs are off.
     """
+    if not animations:
+        return dark
+
+    combine: Callable[[tuple[int, ...]], int] = (
+        _highest if mode == BlendMode.MAX else _average
+    )
 
     def animation(
         time: float,
@@ -34,24 +50,7 @@ def blend(
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        colors_list = [
-            anim if isinstance(anim, RGBCCT) else anim(time, ctx, led, objects)
-            for anim in animations
-        ]
-
-        if not colors_list:
-            return RGBCCT()
-
-        tuples = (
-            (color.r, color.g, color.b, color.cw, color.ww) for color in colors_list
-        )
-        zipped = zip(*tuples, strict=True)
-
-        if mode == "max":
-            result = tuple(max(values) for values in zipped)
-        else:
-            result = tuple(int(sum(values) / len(colors_list)) for values in zipped)
-
-        return RGBCCT(r=result[0], g=result[1], b=result[2], cw=result[3], ww=result[4])
+        colors = (render(anim, time, ctx, led, objects) for anim in animations)
+        return RGBCCT(*map(combine, zip(*map(channels, colors), strict=True)))
 
     return animation

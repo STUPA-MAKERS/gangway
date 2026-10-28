@@ -6,6 +6,7 @@ from rpi_ws2805 import RGBCCT
 
 from ...helpers import interpolate_rgbcct
 from ...types import LED, Animation, AnimationOrColor, SceneContext, TrackedPoint
+from .._common import render_pair
 
 
 def exponential(
@@ -30,24 +31,10 @@ def exponential(
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        objects = list(objects)
-        intensity = (
-            max(2 ** (-(led.p - obj).length / radius) for obj in objects)
-            if len(objects) != 0
-            else 0
+        intensity = max(
+            (2 ** (-(led.p - obj).length / radius) for obj in objects), default=0
         )
-
-        primary_rgbcct = (
-            primary if isinstance(primary, RGBCCT) else primary(time, ctx, led, objects)
-        )
-        secondary_rgbcct = (
-            secondary
-            if isinstance(secondary, RGBCCT)
-            else secondary(time, ctx, led, objects)
-        )
-
-        return interpolate_rgbcct(
-            primary_rgbcct, secondary_rgbcct, intensity, use_sign=False
-        )
+        near, far = render_pair(primary, secondary, time, ctx, led, objects)
+        return interpolate_rgbcct(near, far, intensity, use_sign=False)
 
     return animation

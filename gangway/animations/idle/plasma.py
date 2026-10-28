@@ -18,6 +18,11 @@ def plasma(speed: float = 0.5, scale: float = 0.05) -> Animation:
 
     Returns:
         The animation.
+
+    Note:
+        The sum of the waves uses the ``+`` operator, not `sum`. Since
+        Python 3.12, `sum` adds floats with compensation, and that can
+        change the last bit of the hue.
     """
 
     def animation(
@@ -27,17 +32,15 @@ def plasma(speed: float = 0.5, scale: float = 0.05) -> Animation:
         _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         t = time * speed
-        v = 0.0
-        v += math.sin((led.p.x * scale) + t)
-        v += math.sin((led.p.y * scale) / 2.0 + t)
-        v += math.sin((led.p.x * scale + led.p.y * scale) / 2.0 + t)
-        cx = led.p.x + 0.5 * math.sin(t / 5.0)
-        cy = led.p.y + 0.5 * math.cos(t / 3.0)
-        v += math.sin(math.sqrt((cx * scale) ** 2 + (cy * scale) ** 2) + t)
-        v /= 4.0
-
-        hue = (t + v) % 1.0
-        r, g, b = hsv_to_rgb(hue, 1.0, 1.0)
-        return RGBCCT(r=r, g=g, b=b)
+        x, y = led.p.x, led.p.y
+        cx = x + 0.5 * math.sin(t / 5.0)
+        cy = y + 0.5 * math.cos(t / 3.0)
+        v = (
+            math.sin((x * scale) + t)
+            + math.sin((y * scale) / 2.0 + t)
+            + math.sin((x * scale + y * scale) / 2.0 + t)
+            + math.sin(math.sqrt((cx * scale) ** 2 + (cy * scale) ** 2) + t)
+        ) / 4.0
+        return RGBCCT(*hsv_to_rgb((t + v) % 1.0, 1.0, 1.0))
 
     return animation

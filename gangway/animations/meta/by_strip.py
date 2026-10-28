@@ -4,6 +4,7 @@ from collections.abc import Iterable, Sequence
 
 from rpi_ws2805 import RGBCCT
 
+from ...helpers import render
 from ...types import (
     LED,
     Animation,
@@ -43,7 +44,7 @@ def by_strip(
     Returns:
         The animation.
     """
-    mapping = {} if assignments is None else dict(assignments)
+    mapping = dict(assignments or ())
 
     def animation(
         time: float,
@@ -51,10 +52,6 @@ def by_strip(
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        anim = mapping.get(led.strip_index, default)
-
-        if isinstance(anim, RGBCCT):
-            return anim
-        return anim(time, ctx, led, objects)
+        return render(mapping.get(led.strip_index, default), time, ctx, led, objects)
 
     return animation

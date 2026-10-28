@@ -29,9 +29,7 @@ def theater_chase(
         led: LED,
         _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        time_offset = int(time * speed * 10)
-        if (led.index - time_offset) % spacing == 0:
-            return color
-        return RGBCCT()
+        step = int(time * speed * 10)
+        return color if (led.index - step) % spacing == 0 else RGBCCT()
 
     return animation

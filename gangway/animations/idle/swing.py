@@ -2,17 +2,20 @@
 
 import math
 from collections.abc import Sequence
-from typing import Literal
 
 from rpi_ws2805 import RGBCCT
 
 from ...helpers import interpolate_rgbcct
-from ...types import LED, Animation, SceneContext, TrackedPoint
+from ...types import LED, Animation, Axis, SceneContext, TrackedPoint
+from .._common import axis
+
+_CUTOFF = 0.2
+"""The intensity below which the LED is off. This gives the band a sharp edge."""
 
 
 def swing(
     color: RGBCCT = RGBCCT(r=255, g=255, b=255, cw=255),
-    direction: Literal["x", "y"] = "y",
+    direction: Axis = Axis.Y,
     wavelength: int = 50,
     speed: float = 10,
 ) -> Animation:
@@ -27,6 +30,7 @@ def swing(
     Returns:
         The animation.
     """
+    coordinate = axis(direction)
 
     def animation(
         time: float,
@@ -34,22 +38,11 @@ def swing(
         led: LED,
         _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        coordinate: float = led.p.x if direction == "x" else led.p.y
-        floor_len: float = (
-            ctx.floor.p2.x - ctx.floor.p1.x
-            if direction == "x"
-            else ctx.floor.p2.y - ctx.floor.p1.y
+        floor_len = coordinate(ctx.floor.p2) - coordinate(ctx.floor.p1)
+        target = math.sin(time * speed) * floor_len / 2 + floor_len / 2
+        intensity = 2 ** (-abs(coordinate(led.p) - target) / wavelength)
+        return interpolate_rgbcct(
+            color, RGBCCT(), 0 if intensity < _CUTOFF else intensity, use_sign=False
         )
-
-        target_coordinate: float = (
-            math.sin(time * speed) * floor_len / 2 + floor_len / 2
-        )
-
-        intensity = 2 ** (-abs(coordinate - target_coordinate) / wavelength)
-
-        if intensity < 0.2:
-            intensity = 0
-
-        return interpolate_rgbcct(color, RGBCCT(), intensity, use_sign=False)
 
     return animation

@@ -12,6 +12,7 @@ from ...types import (
     SceneContext,
     TrackedPoint,
 )
+from .._common import render_pair
 
 
 def exponential_at(
@@ -44,19 +45,12 @@ def exponential_at(
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        intensity = 2 ** (-(led.p - target_point).length / radius)
-
-        primary_color = (
-            primary if isinstance(primary, RGBCCT) else primary(time, ctx, led, objects)
-        )
-        secondary_color = (
-            secondary
-            if isinstance(secondary, RGBCCT)
-            else secondary(time, ctx, led, objects)
-        )
-
+        near, far = render_pair(primary, secondary, time, ctx, led, objects)
         return interpolate_rgbcct(
-            primary_color, secondary_color, intensity, use_sign=False
+            near,
+            far,
+            2 ** (-(led.p - target_point).length / radius),
+            use_sign=False,
         )
 
     return animation

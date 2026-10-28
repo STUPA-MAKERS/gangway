@@ -4,6 +4,7 @@ from collections.abc import Sequence
 
 from rpi_ws2805 import RGBCCT
 
+from ...helpers import render
 from ...types import LED, Animation, AnimationOrColor, SceneContext, TrackedPoint
 
 
@@ -26,18 +27,8 @@ def idle(
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        objects = list(objects)
-
-        if len(objects) == 0:
-            return (
-                idle_animation
-                if isinstance(idle_animation, RGBCCT)
-                else idle_animation(time, ctx, led, objects)
-            )
-        return (
-            active_animation
-            if isinstance(active_animation, RGBCCT)
-            else active_animation(time, ctx, led, objects)
+        return render(
+            active_animation if objects else idle_animation, time, ctx, led, objects
         )
 
     return animation

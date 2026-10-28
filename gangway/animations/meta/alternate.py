@@ -4,6 +4,7 @@ from collections.abc import Sequence
 
 from rpi_ws2805 import RGBCCT
 
+from ...helpers import render
 from ...types import (
     LED,
     Animation,
@@ -11,15 +12,7 @@ from ...types import (
     SceneContext,
     TrackedPoint,
 )
-
-
-def _off(
-    _time: float,
-    _ctx: SceneContext,
-    _led: LED,
-    _objects: Sequence[TrackedPoint],
-) -> RGBCCT:
-    return RGBCCT()
+from .._common import dark
 
 
 def alternate(
@@ -35,8 +28,8 @@ def alternate(
     Returns:
         The animation. With no animations, all LEDs are off.
     """
-    if len(animations) == 0:
-        return _off
+    if not animations:
+        return dark
 
     def animation(
         time: float,
@@ -44,7 +37,8 @@ def alternate(
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        anim = animations[int(time / length) % len(animations)]
-        return anim if isinstance(anim, RGBCCT) else anim(time, ctx, led, objects)
+        return render(
+            animations[int(time / length) % len(animations)], time, ctx, led, objects
+        )
 
     return animation

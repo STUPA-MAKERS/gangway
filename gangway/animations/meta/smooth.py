@@ -4,6 +4,7 @@ from collections.abc import Sequence
 
 from rpi_ws2805 import RGBCCT
 
+from ...helpers import render
 from ...types import (
     LED,
     Animation,
@@ -11,8 +12,9 @@ from ...types import (
     SceneContext,
     TrackedPoint,
 )
+from .._common import channels, from_channels
 
-type _Color = tuple[float, float, float, float, float]
+type _Color = tuple[float, ...]
 
 
 def smooth(
@@ -27,9 +29,11 @@ def smooth(
             no smoothing. 1 keeps the first color forever.
 
     Returns:
-        The animation.
+        The animation. The average of each LED depends on its earlier
+        frames, so the animation keeps one entry for each LED. The entries
+        are floats, because integer channels would lose small steps.
     """
-    # Keep the state as floats. Integer channels would lose small steps.
+    weight = 1.0 - smoothing
     last_colors: dict[int, _Color] = {}
 
     def func(
@@ -38,39 +42,16 @@ def smooth(
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        target = (
-            animation
-            if isinstance(animation, RGBCCT)
-            else animation(time, ctx, led, objects)
-        )
-
+        target = render(animation, time, ctx, led, objects)
         current = last_colors.get(led.index)
-
         if current is None:
-            last_colors[led.index] = (
-                float(target.r),
-                float(target.g),
-                float(target.b),
-                float(target.cw),
-                float(target.ww),
-            )
+            last_colors[led.index] = tuple(map(float, channels(target)))
             return target
-
-        weight = 1.0 - smoothing
-        next_r = current[0] * smoothing + target.r * weight
-        next_g = current[1] * smoothing + target.g * weight
-        next_b = current[2] * smoothing + target.b * weight
-        next_cw = current[3] * smoothing + target.cw * weight
-        next_ww = current[4] * smoothing + target.ww * weight
-
-        last_colors[led.index] = (next_r, next_g, next_b, next_cw, next_ww)
-
-        return RGBCCT(
-            r=int(next_r),
-            g=int(next_g),
-            b=int(next_b),
-            cw=int(next_cw),
-            ww=int(next_ww),
+        averaged = tuple(
+            old * smoothing + new * weight
+            for old, new in zip(current, channels(target), strict=True)
         )
+        last_colors[led.index] = averaged
+        return from_channels(averaged)
 
     return func

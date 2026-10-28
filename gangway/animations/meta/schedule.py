@@ -5,6 +5,7 @@ from collections.abc import Sequence
 
 from rpi_ws2805 import RGBCCT
 
+from ...helpers import render
 from ...types import (
     LED,
     Animation,
@@ -12,6 +13,21 @@ from ...types import (
     SceneContext,
     TrackedPoint,
 )
+
+_DEFAULT_WINDOW = (datetime.time(18, 0), datetime.time(6, 0))
+
+
+def _window(start: str, end: str) -> tuple[datetime.time, datetime.time]:
+    """Parse a time range. An invalid time gives `_DEFAULT_WINDOW`."""
+    try:
+        return datetime.time.fromisoformat(start), datetime.time.fromisoformat(end)
+    except ValueError:
+        return _DEFAULT_WINDOW
+
+
+def _in_window(now: datetime.time, start: datetime.time, end: datetime.time) -> bool:
+    """Check if a time is in a range. The range can go past midnight."""
+    return start <= now <= end if start <= end else now >= start or now <= end
 
 
 def schedule(
@@ -32,6 +48,9 @@ def schedule(
 
     Returns:
         The animation. An invalid time gives the range 18:00 to 06:00.
+        The animation parses the times in each call, not once. Thus a value
+        that is not a string raises a `TypeError` in the frame, not when
+        the config loads.
     """
 
     def animation(
@@ -41,24 +60,8 @@ def schedule(
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         now = datetime.datetime.now().time()
-        try:
-            start_t = datetime.time.fromisoformat(start)
-            end_t = datetime.time.fromisoformat(end)
-        except ValueError:
-            start_t = datetime.time(18, 0)
-            end_t = datetime.time(6, 0)
-
-        if start_t <= end_t:
-            is_active = start_t <= now <= end_t
-        else:
-            is_active = now >= start_t or now <= end_t
-
-        target = primary if is_active else secondary
-
-        if isinstance(target, RGBCCT):
-            return target
-
-        return target(time, ctx, led, objects)
+        active = _in_window(now, *_window(start, end))
+        return render(primary if active else secondary, time, ctx, led, objects)
 
     return animation
 
@@ -86,7 +89,7 @@ def day_of_week(
     Returns:
         The animation.
     """
-    days = [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+    days = (monday, tuesday, wednesday, thursday, friday, saturday, sunday)
 
     def animation(
         time: float,
@@ -94,11 +97,6 @@ def day_of_week(
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        weekday = datetime.datetime.now().weekday()
-        anim = days[weekday]
-
-        if isinstance(anim, RGBCCT):
-            return anim
-        return anim(time, ctx, led, objects)
+        return render(days[datetime.datetime.now().weekday()], time, ctx, led, objects)
 
     return animation

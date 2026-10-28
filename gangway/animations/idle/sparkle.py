@@ -11,6 +11,10 @@ from ...types import LED, Animation, SceneContext, TrackedPoint
 def sparkle(density: float = 0.1, speed: float = 20.0) -> Animation:
     """Light random LEDs in random colors.
 
+    Each LED uses a local random generator with a seed from the LED and the
+    time step. This gives a repeatable pattern and does not change the
+    global random state.
+
     Args:
         density: The part of the LEDs that are lit, from 0 to 1.
         speed: The number of changes per second.
@@ -25,14 +29,11 @@ def sparkle(density: float = 0.1, speed: float = 20.0) -> Animation:
         led: LED,
         _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        seed = hash((led.index, int(time * speed)))
-        rng = random.Random(seed)
-        if rng.random() < density:
-            return RGBCCT(
-                r=rng.randint(0, 255),
-                g=rng.randint(0, 255),
-                b=rng.randint(0, 255),
-            )
-        return RGBCCT()
+        rng = random.Random(hash((led.index, int(time * speed))))
+        return (
+            RGBCCT(*(rng.randint(0, 255) for _channel in range(3)))
+            if rng.random() < density
+            else RGBCCT()
+        )
 
     return animation

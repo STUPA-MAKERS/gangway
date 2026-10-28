@@ -1,6 +1,7 @@
 """The `persist` animation."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 
 from rpi_ws2805 import RGBCCT
 
@@ -10,6 +11,52 @@ from ...types import (
     SceneContext,
     TrackedPoint,
 )
+
+_GRACE = 0.1
+"""The time in seconds that a person of an earlier frame stays without a match."""
+
+
+@dataclass(frozen=True)
+class _Memory:
+    """The persons that `persist` keeps at one frame.
+
+    Attributes:
+        seen: The last position and the last time for each key.
+        frame_time: The time of the last frame update.
+        objects: The kept persons, in the order of the first sighting.
+    """
+
+    seen: Mapping[int, tuple[TrackedPoint, float]] = field(
+        default_factory=dict[int, tuple[TrackedPoint, float]]
+    )
+    frame_time: float = -1.0
+    objects: tuple[TrackedPoint, ...] = ()
+
+
+def _remember(
+    memory: _Memory, time: float, objects: Sequence[TrackedPoint], duration: float
+) -> _Memory:
+    """Get the memory of the next frame.
+
+    The key is the hash of the position, not the track ID. A moving person
+    gets a new key in each frame, so stale keys expire fast. The merge keeps
+    the position of the known keys in the order, like an update in place.
+    """
+    current = {hash(obj.tuple): (obj, time) for obj in objects}
+    merged = {**memory.seen, **current}
+    seen = {
+        key: (point, last_seen)
+        for key, (point, last_seen) in merged.items()
+        if not (
+            time - last_seen > duration
+            or (key not in current and time - last_seen > _GRACE)
+        )
+    }
+    return _Memory(
+        seen=seen,
+        frame_time=time,
+        objects=tuple(point for point, _last_seen in seen.values()),
+    )
 
 
 def persist(
@@ -23,10 +70,12 @@ def persist(
         duration: The maximum time to keep a person in seconds.
 
     Returns:
-        The animation.
+        The animation. It keeps the persons of the earlier frames as an
+        immutable `_Memory` and replaces it on the first call of each frame.
+        The animation gets one call for each LED, but the time changes only
+        between frames.
     """
-    persisted_objects: dict[int, tuple[TrackedPoint, float]] = {}
-    last_frame_time = -1.0
+    memory = _Memory()
 
     def func(
         time: float,
@@ -34,30 +83,9 @@ def persist(
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        nonlocal last_frame_time
-
-        # The function runs once for each LED, but the time only changes
-        # between frames. Update the persons only on the first call of a frame.
-        if time > last_frame_time:
-            # The key is the hash of the position, not the track ID. A moving
-            # person gets a new key in each frame, so stale keys expire fast.
-            current_ids = {hash(o.tuple) for o in objects}
-            for obj in objects:
-                persisted_objects[hash(obj.tuple)] = (obj, time)
-
-            expired_ids: list[int] = []
-            for obj_id, (_point, last_seen) in persisted_objects.items():
-                if time - last_seen > duration or (
-                    obj_id not in current_ids and time - last_seen > 0.1
-                ):
-                    expired_ids.append(obj_id)
-
-            for obj_id in expired_ids:
-                persisted_objects.pop(obj_id, None)
-
-            last_frame_time = time
-
-        all_objects = [p for p, _t in persisted_objects.values()]
-        return animation(time, ctx, led, all_objects)
+        nonlocal memory
+        if time > memory.frame_time:
+            memory = _remember(memory, time, objects, duration)
+        return animation(time, ctx, led, memory.objects)
 
     return func

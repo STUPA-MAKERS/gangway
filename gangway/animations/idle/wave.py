@@ -4,17 +4,48 @@ import math
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import reduce
 
 from rpi_ws2805 import RGBCCT
 
 from ...types import LED, Animation, SceneContext, TrackedPoint
+from .._common import Channels, channels
+
+type _Totals = tuple[float, float, float, float, float]
 
 
 @dataclass(frozen=True)
 class _Wave:
     direction: tuple[float, float]
-    color: RGBCCT
+    channels: Channels
     phase: float
+
+
+def _random_wave(index: int, n_waves: int, colors: Sequence[RGBCCT]) -> _Wave:
+    """Make one wave from the global random generator.
+
+    The function draws the angle before the color. This order of the
+    random calls gives the same waves for the same seed.
+    """
+    angle = random.uniform(0, 2 * math.pi)
+    return _Wave(
+        direction=(math.cos(angle), math.sin(angle)),
+        channels=channels(random.choice(colors)),
+        phase=(index / n_waves) * 2 * math.pi,
+    )
+
+
+def _add(totals: _Totals, contribution: tuple[Channels, float]) -> _Totals:
+    """Add the channels of one wave, scaled by its intensity, to the totals."""
+    color, intensity = contribution
+    r, g, b, cw, ww = totals
+    return (
+        r + color[0] * intensity,
+        g + color[1] * intensity,
+        b + color[2] * intensity,
+        cw + color[3] * intensity,
+        ww + color[4] * intensity,
+    )
 
 
 def wave(
@@ -34,15 +65,7 @@ def wave(
     Returns:
         The animation.
     """
-    waves: list[_Wave] = []
-    for i in range(n_waves):
-        angle = random.uniform(0, 2 * math.pi)
-        direction = (math.cos(angle), math.sin(angle))
-        color = random.choice(colors)
-        waves.append(
-            _Wave(direction=direction, color=color, phase=(i / n_waves) * 2 * math.pi)
-        )
-
+    waves = tuple(_random_wave(i, n_waves, colors) for i in range(n_waves))
     k = 2 * math.pi / wavelength
 
     def animation(
@@ -51,29 +74,23 @@ def wave(
         led: LED,
         _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        r, g, b, cw, ww = 0.0, 0.0, 0.0, 0.0, 0.0
-
-        for wave_params in waves:
-            direction = wave_params.direction
-            color = wave_params.color
-
-            proj = led.p.x * direction[0] + led.p.y * direction[1]
-            intensity = (
-                1 + math.sin(k * proj - (k * speed * time) + wave_params.phase)
-            ) / 2
-
-            r += color.r * intensity
-            g += color.g * intensity
-            b += color.b * intensity
-            cw += color.cw * intensity
-            ww += color.ww * intensity
-
-        return RGBCCT(
-            r=min(255, int(r)),
-            g=min(255, int(g)),
-            b=min(255, int(b)),
-            cw=min(255, int(cw)),
-            ww=min(255, int(ww)),
+        shift = k * speed * time
+        contributions = (
+            (
+                w.channels,
+                (
+                    1
+                    + math.sin(
+                        k * (led.p.x * w.direction[0] + led.p.y * w.direction[1])
+                        - shift
+                        + w.phase
+                    )
+                )
+                / 2,
+            )
+            for w in waves
         )
+        totals = reduce(_add, contributions, (0.0, 0.0, 0.0, 0.0, 0.0))
+        return RGBCCT(*(min(255, int(total)) for total in totals))
 
     return animation

@@ -1,9 +1,12 @@
 """The `extrapolate` animation."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from functools import reduce
 
 from rpi_ws2805 import RGBCCT
 
+from ...helpers import render
 from ...types import (
     LED,
     Animation,
@@ -11,6 +14,61 @@ from ...types import (
     SceneContext,
     TrackedPoint,
 )
+
+
+@dataclass(frozen=True)
+class _Track:
+    """The last measurement of one person.
+
+    Attributes:
+        point: The last measured position.
+        time: The time of the last measurement.
+        velocity: The velocity, in the reversed direction of `Point.__sub__`.
+        instance: The ``id()`` of the point object of the last measurement.
+    """
+
+    point: TrackedPoint
+    time: float
+    velocity: TrackedPoint
+    instance: int
+
+
+_MIN_DT = 0.001
+"""The shortest time between two measurements that gives a new velocity."""
+
+type _Tracks = Mapping[int, _Track]
+type _Step = tuple[_Tracks, tuple[TrackedPoint, ...]]
+
+
+def _observe(track: _Track | None, obj: TrackedPoint) -> _Track:
+    """Update the track of a person with a measurement.
+
+    The sensor receiver makes new point objects for each measurement. Thus
+    the same object means the same measurement, and the track stays.
+    """
+    match track:
+        case None:
+            return _Track(obj, obj.timestamp, TrackedPoint(0, 0), id(obj))
+        case _Track(instance=instance) if instance == id(obj):
+            return track
+        case _Track(point=point, time=time, velocity=velocity):
+            dt = obj.timestamp - time
+            return _Track(
+                obj,
+                obj.timestamp,
+                (obj - point) / dt if dt > _MIN_DT else velocity,
+                id(obj),
+            )
+
+
+def _predict(obj: TrackedPoint, velocity: TrackedPoint, latency: float) -> TrackedPoint:
+    """Move a person forward along its velocity for ``latency`` seconds.
+
+    Point subtraction is reversed (``other - self``), so a negative factor
+    moves the point forward.
+    """
+    predicted = obj + velocity * latency * (-1)
+    return TrackedPoint(predicted.x, predicted.y, id=obj.id)
 
 
 def extrapolate(animation: AnimationOrColor, latency: float = 0.0) -> Animation:
@@ -21,11 +79,25 @@ def extrapolate(animation: AnimationOrColor, latency: float = 0.0) -> Animation:
         latency: The time to look ahead in seconds.
 
     Returns:
-        The animation.
+        The animation. The velocity needs the measurement of an earlier
+        frame, so the animation keeps the tracks of the visible persons.
+        Each call replaces the mapping with a new one.
     """
-    last_object_state: dict[int, tuple[TrackedPoint, float]] = {}
-    object_velocities: dict[int, TrackedPoint] = {}
-    last_processed_instance: dict[int, int] = {}
+
+    def step(acc: _Step, obj: TrackedPoint) -> _Step:
+        """Add one person to the tracks and to the predictions.
+
+        The fold adds the persons one by one. Thus a repeated ID sees the
+        measurement before it, like a sequential update.
+        """
+        tracks, predicted = acc
+        track = _observe(tracks.get(obj.id), obj)
+        return (
+            {**tracks, obj.id: track},
+            (*predicted, _predict(obj, track.velocity, latency)),
+        )
+
+    tracks: _Tracks = {}
 
     def func(
         time: float,
@@ -33,46 +105,10 @@ def extrapolate(animation: AnimationOrColor, latency: float = 0.0) -> Animation:
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        current_objects = list(objects)
-        predicted_objects: list[TrackedPoint] = []
-        current_ids: set[int] = set()
-
-        for obj in current_objects:
-            obj_id = obj.id
-            current_ids.add(obj_id)
-
-            # The sensor receiver makes new point objects for each
-            # measurement. The same object means the same measurement.
-            pid = id(obj)
-            if last_processed_instance.get(obj_id) != pid:
-                obj_time = obj.timestamp
-                prev_pos, prev_time = last_object_state.get(obj_id, (obj, obj_time))
-
-                if obj_id not in last_object_state:
-                    object_velocities[obj_id] = TrackedPoint(0, 0)
-                else:
-                    dt = obj_time - prev_time
-                    if dt > 0.001:
-                        object_velocities[obj_id] = (obj - prev_pos) / dt
-
-                last_object_state[obj_id] = (obj, obj_time)
-                last_processed_instance[obj_id] = pid
-
-            vel = object_velocities.get(obj_id, TrackedPoint(0, 0))
-            # Point subtraction is reversed (other - self), so a negative
-            # factor moves the point forward along the velocity.
-            predicted = obj + vel * latency * (-1)
-            predicted_objects.append(TrackedPoint(predicted.x, predicted.y, id=obj.id))
-
-        for k in list(last_object_state.keys()):
-            if k not in current_ids:
-                del last_object_state[k]
-                object_velocities.pop(k, None)
-                last_processed_instance.pop(k, None)
-
-        if isinstance(animation, RGBCCT):
-            return animation
-
-        return animation(time, ctx, led, predicted_objects)
+        nonlocal tracks
+        updated, predicted = reduce(step, objects, (tracks, ()))
+        current_ids = {obj.id for obj in objects}
+        tracks = {key: track for key, track in updated.items() if key in current_ids}
+        return render(animation, time, ctx, led, predicted)
 
     return func

@@ -8,11 +8,21 @@ from rpi_ws2805 import RGBCCT
 from ...types import LED, Animation, SceneContext, TrackedPoint
 
 
+def _normalize(value: float, start: float, end: float) -> float:
+    return (value - start) / ((end - start) or 1.0)
+
+
+def _wave(value: float) -> float:
+    return math.sin(value) * 0.5 + 0.5
+
+
 def northern_lights(
     speed: float = 0.5,
     intensity: float = 0.8,
 ) -> Animation:
     """Show flowing curtains of green, teal and purple.
+
+    Green is the main color. Red and blue only add purple tints.
 
     Args:
         speed: The speed of the flow.
@@ -29,25 +39,17 @@ def northern_lights(
         _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         t = time * speed
-
-        dx = ctx.floor.p2.x - ctx.floor.p1.x
-        dy = ctx.floor.p2.y - ctx.floor.p1.y
-        x_norm = (led.p.x - ctx.floor.p1.x) / (dx if dx != 0 else 1.0)
-        y_norm = (led.p.y - ctx.floor.p1.y) / (dy if dy != 0 else 1.0)
+        x_norm = _normalize(led.p.x, ctx.floor.p1.x, ctx.floor.p2.x)
+        y_norm = _normalize(led.p.y, ctx.floor.p1.y, ctx.floor.p2.y)
 
         v1 = math.sin(x_norm * 2.0 + t)
         v2 = math.sin(y_norm * 1.5 - t * 0.7 + v1)
         v3 = math.sin((x_norm + y_norm) * 3.0 + t * 1.5)
 
-        # Green is the main color. Red and blue only add purple tints.
-        r = (math.sin(v1 + t) * 0.5 + 0.5) * 50
-        g = (math.sin(v2 + t * 0.5) * 0.5 + 0.5) * 200
-        b = (math.sin(v3 - t) * 0.5 + 0.5) * 150
-
         return RGBCCT(
-            r=int(r * intensity),
-            g=int(g * intensity),
-            b=int(b * intensity),
+            r=int(_wave(v1 + t) * 50 * intensity),
+            g=int(_wave(v2 + t * 0.5) * 200 * intensity),
+            b=int(_wave(v3 - t) * 150 * intensity),
         )
 
     return animation

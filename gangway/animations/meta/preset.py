@@ -1,5 +1,7 @@
 """The `preset` animation."""
 
+from pathlib import Path
+
 import yaml
 from rpi_ws2805 import RGBCCT
 
@@ -10,8 +12,21 @@ from ...types import (
 )
 
 
+def _read_preset(path: Path) -> YamlValue:
+    """Read a preset file. A missing file gives None, like an empty one."""
+    if not path.exists():
+        return None
+    with path.open() as f:
+        content: YamlValue = yaml.safe_load(f)
+    return content
+
+
 def preset(name: str, visited_presets: set[str] | None = None) -> AnimationOrColor:
     """Load the animation of a preset file.
+
+    The presets are in the ``presets`` folder next to the config file, like
+    in the API. On the Pi that is the state directory, not the read-only
+    source tree.
 
     Args:
         name: The name of the preset.
@@ -24,28 +39,17 @@ def preset(name: str, visited_presets: set[str] | None = None) -> AnimationOrCol
     # gangway.config imports this module, so import it at call time.
     from ...config import ANIMATION_FUNCTIONS, CONFIG  # noqa: PLC0415
 
-    if visited_presets is None:
-        visited_presets = set()
-
-    if name in visited_presets:
+    visited = visited_presets or set[str]()
+    if name in visited:
         return RGBCCT()
 
-    new_visited = visited_presets.copy()
-    new_visited.add(name)
-
-    # The API keeps the presets next to the config file. On the Pi
-    # that is the state directory, not the read-only source tree.
-    preset_path = CONFIG.path.parent / "presets" / f"{name}.yaml"
-
-    if not preset_path.exists():
-        return RGBCCT()
-
-    with open(preset_path) as f:
-        anim_config: YamlValue = yaml.safe_load(f)
-
-    if anim_config is None:
-        return RGBCCT()
-
-    return as_animation(
-        parse_animation(anim_config, ANIMATION_FUNCTIONS, visited_presets=new_visited)
+    anim_config = _read_preset(CONFIG.path.parent / "presets" / f"{name}.yaml")
+    return (
+        RGBCCT()
+        if anim_config is None
+        else as_animation(
+            parse_animation(
+                anim_config, ANIMATION_FUNCTIONS, visited_presets=visited | {name}
+            )
+        )
     )

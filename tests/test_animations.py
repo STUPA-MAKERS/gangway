@@ -12,7 +12,7 @@ from gangway.animations.idle import (
     static,
     wave,
 )
-from gangway.types import LED, Point, Rectangle, SceneContext, TrackedPoint
+from gangway.types import LED, Axis, Point, Rectangle, SceneContext, TrackedPoint
 
 
 @pytest.fixture
@@ -43,9 +43,7 @@ def test_rainbow(ctx: SceneContext, led: LED) -> None:
 @pytest.mark.parametrize("direction", ["x", "y"])
 def test_linear_rainbow(ctx: SceneContext, led: LED, direction: str) -> None:
     """Linear rainbow gives cyan at the center of the floor."""
-    anim = linear_rainbow(
-        direction="x" if direction == "x" else "y", speed=0.0, spread=1.0
-    )
+    anim = linear_rainbow(direction=Axis(direction), speed=0.0, spread=1.0)
     res = anim(0.0, ctx, led, [])
     assert (res.r, res.g, res.b) == (0, 255, 255)
 

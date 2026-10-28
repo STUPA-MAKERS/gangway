@@ -7,7 +7,7 @@ Gangway is a Python-based lighting control system for an interactive art install
 ### 1. Core Logic (`./gangway/`)
 - **`main.py`**: Application entry point. Initializes config, LED controller, and Xovis server.
 - **`led_controller.py`**: Runs the main render loop. It holds the current state, manages the `PixelStrip`, and calls the active animation function for every LED.
-- **`types.py`**: Defines core data structures like `Point`, `Rectangle`, `LED`, `SceneContext`, and the `Animation` callable signature.
+- **`types/`**: Defines the core data types, one module for each type: `Point`, `Rectangle`, `LED`, `SceneContext`, the `Animation` callable signature, and the `StrEnum` types `Axis`, `BlendMode` and `SpeedMode`. The package exports all of them.
 - **`config.py`**: Manages configuration loading from `config.yaml`.
 
 ### 2. Input Handling (`./gangway/xovis/`)

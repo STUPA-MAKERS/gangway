@@ -21,10 +21,17 @@ Gangway is a Python-based lighting control system for an interactive art install
 - **Responsive**: Animations receive a list of detected objects (`Point`s) to react to presence.
 
 ### 4. Hardware Driver
-- Uses a custom `rpi_ws2805` library (located in `gangway/rpi-ws2805-python`) to communicate with the LED strips via GPIO.
+- Uses a custom `rpi_ws2805` library (located in `rpi-ws2805-python/library`) to communicate with the LED strips via PWM0 on GPIO 18. The analog audio also uses PWM0, so the system turns audio off.
 
 ### 5. Frontend (`./frontend/`)
 The frontend is written in Next.js.
+
+### 6. System (`./flake.nix`, `./modules/`, `./nix/`)
+- The flake describes the whole Raspberry Pi with NixOS and nixos-raspberrypi. See the "System (NixOS)" section of README.md.
+- `nix/` holds the packages, `modules/nixos/` the system modules, `modules/hosts/gangway.nix` the host and the SD image.
+- Secrets are in `secrets/gangway.yaml`, encrypted with sops. Never commit a plaintext secret.
+- The app state (`config.yaml`, `presets/`) lives in `/var/lib/gangway` on the Pi. `GANGWAY_CONFIG` points the app at it.
+- Work in `nix develop`. Python is 3.13+, checked with ruff and basedpyright (strict).
 
 ## Data Flow
 1. **Sensor**: Xovis detects a person -> HTTP POST to `server.py`.

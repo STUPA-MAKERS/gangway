@@ -101,3 +101,113 @@ A frontend interface is provided to manage animations and settings.
 ![UI Overview](docs/ui_screenshot_1.png)
 ![UI Settings](docs/ui_screenshot_2.png)
 ![UI Controls](docs/ui_screenshot_3.png)
+
+## System (NixOS)
+
+This repo is also a Nix flake. The flake describes the complete Raspberry Pi:
+the operating system, the network, the services and the app. The board
+support comes from [nixos-raspberrypi](https://github.com/nvmd/nixos-raspberrypi).
+
+| Path | Content |
+|------|---------|
+| `flake.nix` | The inputs. All outputs come from `modules/`. |
+| `modules/hosts/gangway.nix` | The host `gangway` and its SD image. |
+| `modules/nixos/` | The system modules: network, WireGuard, services, app. |
+| `nix/` | The packages: backend, web UI and LED driver. |
+| `secrets/gangway.yaml` | The secrets, encrypted with sops. |
+
+The admin account is `gangway`. `fsi` is an alias with the same UID, home
+and SSH key, so `ssh fsi@gangway.local` also works.
+
+### Network
+
+| Interface | Address | Function |
+|-----------|---------|----------|
+| `eth0` | 10.0.0.1/24 | Private LAN for the Xovis sensor. dnsmasq gives DHCP leases from 10.0.0.2 to 10.0.0.254. |
+| `wlan0` | DHCP | Uplink over "Iphone Hotspot" or "freeCampus". The Pi masquerades the sensor LAN through this link. |
+| `beimgraben.net` | 10.66.66.200/24 | WireGuard tunnel to beimgraben.net. |
+| `vpn.stupa` | 10.0.2.3/32 | WireGuard tunnel to vpn.reutlingen.university. |
+
+| Port | Service | Reachable from |
+|------|---------|----------------|
+| 22 | SSH, key only | All interfaces |
+| 80 | nginx: web UI, `/api/` and `/live` | All interfaces |
+| 1883 | MQTT broker, anonymous | `eth0` and the tunnels |
+| 8081 | Xovis receiver | `eth0` and the tunnels |
+| 8082 | API | `eth0` and the tunnels |
+
+Set the push target of the Xovis sensor to `http://10.0.0.1:8081/`. The
+receiver accepts bodies with `Content-Length` and chunked bodies.
+
+The app keeps its run-time state in `/var/lib/gangway`: `config.yaml` and
+`presets/`. The first start copies the `config.yaml` of this repo into that
+directory. Later builds do not overwrite it.
+
+### Secrets
+
+`secrets/gangway.yaml` holds the WiFi passwords, the WireGuard keys and the
+`API_KEY` of the web UI. sops encrypts the file for two recipients, see
+`.sops.yaml`:
+
+- The GPG key of the admin. Use it to edit the file.
+- The age key of the Pi. sops-nix derives it from the SSH host key
+  `/etc/ssh/ssh_host_ed25519_key` when the system activates.
+
+To edit the secrets, do this step:
+
+```sh
+sops secrets/gangway.yaml
+```
+
+If the Pi gets a new SSH host key, do these steps:
+
+1. Get the age key of the Pi: `ssh-keyscan -t ed25519 gangway.local | ssh-to-age`.
+2. Replace the `gangway` key in `.sops.yaml` with this value.
+3. Re-encrypt the file: `sops updatekeys secrets/gangway.yaml`.
+
+### Install on a new SD card
+
+The SD image contains no secrets and no SSH host key. You must copy the host
+key onto the card before the first boot. If you do not do this, sops-nix
+cannot decrypt the secrets, and the Pi has no WiFi and no tunnels.
+
+1. Build the image: `nix build .#gangway.sd-image`.
+2. Find the device of the card with `lsblk`, for example `/dev/sdX`.
+3. Write the image. This erases the card:
+   `sudo dd if=result/sd-image/*.img of=/dev/sdX bs=4M conv=fsync status=progress`.
+4. Mount the root partition: `sudo mount /dev/sdX2 /mnt`.
+5. Copy the host key:
+   `sudo install -D -m 600 ssh_host_ed25519_key /mnt/etc/ssh/ssh_host_ed25519_key`.
+6. Copy the public key:
+   `sudo install -m 644 ssh_host_ed25519_key.pub /mnt/etc/ssh/ssh_host_ed25519_key.pub`.
+7. Unmount the partition: `sudo umount /mnt`.
+8. Put the card into the Pi and start the Pi.
+
+On the first boot, the root partition grows to fill the card.
+
+### Deploy a change
+
+Build on your computer and activate on the Pi over SSH:
+
+```sh
+nixos-rebuild switch --flake .#gangway --target-host gangway@gangway.local --sudo
+```
+
+To build the system for aarch64 on an x86_64 computer, the computer must
+emulate aarch64. On NixOS, set `boot.binfmt.emulatedSystems = [ "aarch64-linux" ];`.
+The binary cache of nixos-raspberrypi holds the vendor kernel, so the kernel
+does not compile under emulation.
+
+## Development
+
+`nix develop` opens a shell with Python 3.13, the dependencies of the app,
+ruff, basedpyright, pytest and Node.js. The shell also creates `.venv`, so
+your editor finds the same interpreter.
+
+```sh
+nix develop
+ruff check . && ruff format --check .
+basedpyright
+python -m pytest
+cd frontend && npm ci && npm run dev
+```

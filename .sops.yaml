@@ -1,0 +1,16 @@
+# Recipients of secrets/gangway.yaml.
+# - admin: the GPG key of the admin, to edit the file with `sops`.
+# - gangway: the age key of the Pi. ssh-to-age derives it from the SSH host
+#   key /etc/ssh/ssh_host_ed25519_key. A new host key needs a new entry here,
+#   then `sops updatekeys secrets/gangway.yaml`.
+keys:
+  - &admin E77458F1E093846454B9AA21EA77A87280442B37
+  - &gangway age173sdfz976p6z5pp0aqmwyfgnvusv9c707h9l0hfl9qeqmyap6y4srla0gs
+
+creation_rules:
+  - path_regex: secrets/[^/]+\.yaml$
+    key_groups:
+      - pgp:
+          - *admin
+        age:
+          - *gangway

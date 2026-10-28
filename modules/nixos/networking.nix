@@ -16,7 +16,9 @@
     network, which is the FRITZ!Box at the site. The password comes from
     the `wifi-env` secret in secrets/gangway.yaml, which holds one
     `name=password` line per network. wpa_supplicant then never writes a
-    password into the Nix store
+    password into the Nix store. wpa_supplicant runs as its own user, so
+    that user owns the secret. With the default owner root it cannot read
+    the file, and it starts with no password
   - `hardware.wirelessRegulatoryDatabase`, `cfg80211.ieee80211_regdom` and
     `country=DE` — the German radio rules, as the old install set in
     cmdline.txt. Without them the WiFi chip uses the world rules, which
@@ -59,7 +61,10 @@
         };
       };
 
-      sops.secrets.wifi-env.restartUnits = [ "wpa_supplicant.service" ];
+      sops.secrets.wifi-env = {
+        owner = "wpa_supplicant";
+        restartUnits = [ "wpa_supplicant-wlan0.service" ];
+      };
 
       hardware.wirelessRegulatoryDatabase = true;
       boot.kernelParams = [ "cfg80211.ieee80211_regdom=DE" ];

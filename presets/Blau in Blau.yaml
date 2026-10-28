@@ -1,0 +1,15 @@
+wave:
+  colors:
+  - r: 0
+    g: 0
+    b: 255
+    cw: 0
+    ww: 0
+  - r: 79
+    g: 255
+    b: 229
+    cw: 0
+    ww: 0
+  n_waves: 2
+  speed: 500.0
+  wavelength: 200.0

@@ -1,0 +1,9 @@
+theater_chase:
+  color:
+    r: 0
+    g: 0
+    b: 255
+    cw: 0
+    ww: 0
+  speed: 2.0
+  spacing: 8

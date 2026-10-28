@@ -1,0 +1,14 @@
+extrapolate:
+  animation:
+    smooth:
+      animation:
+        idle:
+          idle_animation:
+            northern_lights:
+              speed: 0.5
+              intensity: 0.8
+          active_animation:
+            preset:
+              name: Rainbow-Trails
+      smoothing: 0.5
+  latency: 0.5

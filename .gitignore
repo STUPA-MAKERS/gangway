@@ -12,9 +12,6 @@ dist/
 .env
 .envrc
 
-# Run-time state of the app. On the Pi it lives in /var/lib/gangway
-/presets/
-
 # Nix
 /result
 /result-*

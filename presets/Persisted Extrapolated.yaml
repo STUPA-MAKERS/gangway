@@ -1,0 +1,11 @@
+persist:
+  animation:
+    idle:
+      idle_animation:
+        northern_lights:
+          speed: 0.5
+          intensity: 0.8
+      active_animation:
+        preset:
+          name: Extrapolated Rainbow Trails
+  duration: 2.0

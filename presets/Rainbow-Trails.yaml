@@ -1,0 +1,14 @@
+persist:
+  animation:
+    paint:
+      primary:
+        plasma:
+          speed: 0.5
+          scale: 0.05
+      secondary:
+        northern_lights:
+          speed: 0.5
+          intensity: 0.8
+      radius: 50.0
+      persistence: 0.5
+  duration: 2.0

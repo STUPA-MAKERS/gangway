@@ -11,6 +11,7 @@ from rpi_ws2805 import RGBCCT
 from .animations import idle, meta, responsive
 from .helpers import AnimationFactory, as_animation, interpolate_points, parse_animation
 from .types import LED, AnimationOrColor, Point, Rectangle, Strip, YamlValue
+from .yaml_loader import GangwayLoader
 
 
 class ProjectionConfig(TypedDict, total=False):
@@ -140,7 +141,7 @@ class GANGWAYConfig:
         """
         with self._lock:
             with open(self.path) as f:
-                config: ConfigFile = yaml.safe_load(f)
+                config: ConfigFile = yaml.load(f, Loader=GangwayLoader)
 
             self.data = config
             projection = config.get("projection", {})
@@ -193,7 +194,7 @@ class GANGWAYConfig:
         """
         with self._lock:
             with open(self.path) as f:
-                config: ConfigFile = yaml.safe_load(f)
+                config: ConfigFile = yaml.load(f, Loader=GangwayLoader)
 
             with open(self.path, "w") as f:
                 yaml.dump(config, f)

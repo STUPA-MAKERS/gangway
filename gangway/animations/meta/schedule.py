@@ -17,12 +17,24 @@ from ...types import (
 _DEFAULT_WINDOW = (datetime.time(18, 0), datetime.time(6, 0))
 
 
-def _window(start: str, end: str) -> tuple[datetime.time, datetime.time]:
-    """Parse a time range. An invalid time gives `_DEFAULT_WINDOW`."""
-    try:
-        return datetime.time.fromisoformat(start), datetime.time.fromisoformat(end)
-    except ValueError:
-        return _DEFAULT_WINDOW
+def _window(start: object, end: object) -> tuple[datetime.time, datetime.time]:
+    """Parse a time range.
+
+    A value that is not a valid ``HH:MM`` string gives `_DEFAULT_WINDOW`.
+    This includes the integer that a YAML 1.1 loader makes of an unquoted
+    ``18:00``.
+    """
+    match start, end:
+        case str(), str():
+            try:
+                return (
+                    datetime.time.fromisoformat(start),
+                    datetime.time.fromisoformat(end),
+                )
+            except ValueError:
+                return _DEFAULT_WINDOW
+        case _:
+            return _DEFAULT_WINDOW
 
 
 def _in_window(now: datetime.time, start: datetime.time, end: datetime.time) -> bool:
@@ -48,10 +60,8 @@ def schedule(
 
     Returns:
         The animation. An invalid time gives the range 18:00 to 06:00.
-        The animation parses the times in each call, not once. Thus a value
-        that is not a string raises a `TypeError` in the frame, not when
-        the config loads.
     """
+    window = _window(start, end)
 
     def animation(
         time: float,
@@ -60,7 +70,7 @@ def schedule(
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         now = datetime.datetime.now().time()
-        active = _in_window(now, *_window(start, end))
+        active = _in_window(now, *window)
         return render(primary if active else secondary, time, ctx, led, objects)
 
     return animation

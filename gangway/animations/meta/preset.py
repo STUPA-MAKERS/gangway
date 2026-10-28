@@ -10,6 +10,7 @@ from ...types import (
     AnimationOrColor,
     YamlValue,
 )
+from ...yaml_loader import GangwayLoader
 
 
 def _read_preset(path: Path) -> YamlValue:
@@ -17,7 +18,7 @@ def _read_preset(path: Path) -> YamlValue:
     if not path.exists():
         return None
     with path.open() as f:
-        content: YamlValue = yaml.safe_load(f)
+        content: YamlValue = yaml.load(f, Loader=GangwayLoader)
     return content
 
 

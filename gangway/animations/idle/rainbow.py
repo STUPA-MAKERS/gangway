@@ -30,7 +30,8 @@ def rainbow(speed: float = 0.1, spread: float = 3.0) -> Animation:
         led: LED,
         _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        x_norm = (led.p.x - ctx.floor.p1.x) / (ctx.floor.p2.x - ctx.floor.p1.x)
+        width = (ctx.floor.p2.x - ctx.floor.p1.x) or 1.0
+        x_norm = (led.p.x - ctx.floor.p1.x) / width
         return _hue_color(x_norm, spread, time, speed)
 
     return animation

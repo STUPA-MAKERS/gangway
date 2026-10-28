@@ -33,6 +33,16 @@ class _Memory:
     objects: tuple[TrackedPoint, ...] = ()
 
 
+def _since(memory: _Memory, time: float) -> _Memory:
+    """Get the memory that a frame at ``time`` builds on.
+
+    A time before the last frame means that the timeline started again, for
+    example after a config reload. The kept persons then belong to a future
+    that did not happen, so the memory starts empty.
+    """
+    return memory if time > memory.frame_time else _Memory()
+
+
 def _remember(
     memory: _Memory, time: float, objects: Sequence[TrackedPoint], duration: float
 ) -> _Memory:
@@ -84,8 +94,8 @@ def persist(
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         nonlocal memory
-        if time > memory.frame_time:
-            memory = _remember(memory, time, objects, duration)
+        if time != memory.frame_time:
+            memory = _remember(_since(memory, time), time, objects, duration)
         return animation(time, ctx, led, memory.objects)
 
     return func

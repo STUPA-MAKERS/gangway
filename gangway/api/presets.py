@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from ..config import CONFIG, ConfigFile
 from ..state import STATE
 from ..types import YamlValue
+from ..yaml_loader import GangwayLoader
 from .models import AnimationModel
 
 router = APIRouter()
@@ -146,7 +147,7 @@ def get_preset(name: str) -> PresetModel:
 
     try:
         with open(preset_path) as f:
-            animation_data = yaml.safe_load(f)
+            animation_data = yaml.load(f, Loader=GangwayLoader)
         return PresetModel(name=name, animation=animation_data)
     except Exception as e:
         raise HTTPException(
@@ -176,7 +177,7 @@ def save_preset(name: str, animation: AnimationModel | None = None) -> dict[str,
     if animation is None:
         try:
             with open(CONFIG.path) as f:
-                current_config: ConfigFile = yaml.safe_load(f)
+                current_config: ConfigFile = yaml.load(f, Loader=GangwayLoader)
                 animation_data = current_config.get("animation")
         except Exception as e:
             raise HTTPException(
@@ -219,10 +220,10 @@ def load_preset(name: str) -> dict[str, str]:
 
     try:
         with open(preset_path) as f:
-            animation_data: YamlValue = yaml.safe_load(f)
+            animation_data: YamlValue = yaml.load(f, Loader=GangwayLoader)
 
         with open(CONFIG.path) as f:
-            config_data: ConfigFile = yaml.safe_load(f)
+            config_data: ConfigFile = yaml.load(f, Loader=GangwayLoader)
 
         config_data["animation"] = animation_data
 
@@ -274,7 +275,7 @@ def rename_preset(name: str, new_name: str) -> dict[str, str]:
 
     try:
         with open(CONFIG.path) as f:
-            config_data: ConfigFile = yaml.safe_load(f)
+            config_data: ConfigFile = yaml.load(f, Loader=GangwayLoader)
 
         if update_preset_references(config_data.get("animation"), name, new_name):
             with open(CONFIG.path, "w") as f:
@@ -296,7 +297,7 @@ def rename_preset(name: str, new_name: str) -> dict[str, str]:
     for p in PRESETS_DIR.glob("*.yaml"):
         try:
             with open(p) as f:
-                content: YamlValue = yaml.safe_load(f)
+                content: YamlValue = yaml.load(f, Loader=GangwayLoader)
 
             if update_preset_references(content, name, new_name):
                 with open(p, "w") as f:
@@ -335,7 +336,7 @@ def delete_preset(name: str) -> dict[str, str]:
 
         try:
             with open(p) as f:
-                content: YamlValue = yaml.safe_load(f)
+                content: YamlValue = yaml.load(f, Loader=GangwayLoader)
             if find_preset_usage(content, name):
                 raise HTTPException(
                     status_code=400,

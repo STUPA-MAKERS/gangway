@@ -1,7 +1,7 @@
 """Tests for the meta and responsive animations."""
 
 import datetime
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import ClassVar, Self, cast
 
 import pytest
@@ -187,3 +187,78 @@ def test_smooth_averages_over_frames(ctx: SceneContext, led: LED) -> None:
 
     anim = smooth(step, smoothing=0.5)
     assert [anim(t, ctx, led, []).r for t in (0.0, 1.0, 2.0)] == [200, 100, 50]
+
+
+def _recorder(
+    seen: list[float],
+) -> Callable[[float, SceneContext, LED, Sequence[TrackedPoint]], RGBCCT]:
+    """Get an animation that records the animation time of each call."""
+
+    def record(
+        time: float,
+        _ctx: SceneContext,
+        _led: LED,
+        _objects: Sequence[TrackedPoint],
+    ) -> RGBCCT:
+        seen.append(time)
+        return RGBCCT()
+
+    return record
+
+
+def test_proximity_speed_at_full_intensity_is_capped(
+    ctx: SceneContext, led: LED
+) -> None:
+    """A person on the point at full strength gives the largest speed factor."""
+    seen: list[float] = []
+    anim = proximity_speed(_recorder(seen), radius=100, proximity_factor=1.0)
+    person = [TrackedPoint(0, 0)]
+    _ = anim(0.0, ctx, led, person)
+    _ = anim(1.0, ctx, led, person)
+    assert seen == [0.0, 100.0]
+
+
+def test_proximity_speed_applies_multiplier_without_persons(
+    ctx: SceneContext, led: LED
+) -> None:
+    """The multiplier also scales the time steps of frames with nobody."""
+    seen: list[float] = []
+    anim = proximity_speed(_recorder(seen), multiplier=2.0)
+    _ = anim(0.0, ctx, led, [])
+    _ = anim(1.0, ctx, led, [])
+    assert seen == [0.0, 2.0]
+
+
+def test_persist_starts_again_after_time_goes_back(ctx: SceneContext, led: LED) -> None:
+    """A time before the last frame clears the kept persons."""
+    anim = persist(dot(RED, GREEN, radius=10), duration=2.0)
+    assert anim(10.0, ctx, led, [TrackedPoint(50, 50)]) == RED
+    assert anim(0.0, ctx, led, []) == GREEN
+
+
+def test_paint_starts_again_after_time_goes_back(ctx: SceneContext, led: LED) -> None:
+    """A time before the last frame clears the path and paints again."""
+    anim = paint(RED, GREEN, radius=10, persistence=1.0)
+    assert anim(10.0, ctx, led, [TrackedPoint(50, 50)]) == RED
+    assert anim(0.0, ctx, led, []) == GREEN
+    assert anim(0.1, ctx, led, [TrackedPoint(50, 50)]) == RED
+
+
+@pytest.mark.parametrize(("start", "end"), [(810, 820), (None, "06:00"), ("x", "y")])
+def test_schedule_with_an_invalid_range_uses_the_default(
+    ctx: SceneContext,
+    led: LED,
+    monkeypatch: pytest.MonkeyPatch,
+    start: object,
+    end: object,
+) -> None:
+    """A range that is not two HH:MM strings gives 18:00 to 06:00."""
+
+    class FakeDateTime(datetime.datetime):
+        @classmethod
+        def now(cls, tz: datetime.tzinfo | None = None) -> Self:
+            return cls(2026, 1, 1, 23, 0, tzinfo=tz)
+
+    monkeypatch.setattr(datetime, "datetime", FakeDateTime)
+    anim = schedule(RED, GREEN, start=cast("str", start), end=cast("str", end))
+    assert anim(0.0, ctx, led, []) == RED

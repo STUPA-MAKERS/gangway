@@ -79,3 +79,9 @@ def test_wave(ctx: SceneContext, led: LED) -> None:
     assert 0 <= res.r <= 255
     assert res.g == 0
     assert res.b == 0
+
+
+def test_rainbow_on_a_floor_with_no_width(led: LED) -> None:
+    """Rainbow gives a color on a floor with zero width, not an error."""
+    flat = SceneContext(floor=Rectangle(Point(50, 0), Point(50, 100)), leds=[led])
+    assert isinstance(rainbow()(0.0, flat, led, []), RGBCCT)

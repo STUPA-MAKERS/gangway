@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from ..config import CONFIG
 from ..state import STATE
+from ..yaml_loader import GangwayLoader
 from .models import AnimationModel
 
 router = APIRouter()
@@ -58,7 +59,7 @@ def get_config() -> ConfigModel:
     """
     try:
         with open(CONFIG.path) as f:
-            raw_config = yaml.safe_load(f)
+            raw_config = yaml.load(f, Loader=GangwayLoader)
         return ConfigModel(**raw_config)
     except Exception as e:
         raise HTTPException(
@@ -84,7 +85,7 @@ def update_config(new_config: ConfigModel) -> dict[str, str]:
     """
     try:
         with open(CONFIG.path) as f:
-            raw_config = yaml.safe_load(f)
+            raw_config = yaml.load(f, Loader=GangwayLoader)
         old_config = ConfigModel(**raw_config)
 
         old_config.animation = new_config.animation

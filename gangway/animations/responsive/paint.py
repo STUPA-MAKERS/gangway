@@ -33,6 +33,16 @@ class _Trail:
     points: tuple[tuple[float, float], ...] = ()
 
 
+def _since(trail: _Trail, time: float) -> _Trail:
+    """Get the trail that a frame at ``time`` builds on.
+
+    A time before the last frame means that the timeline started again, for
+    example after a config reload. The painted path then lies in a future
+    that did not happen, so the trail starts empty.
+    """
+    return trail if time > trail.frame_time else _Trail()
+
+
 def _advance(
     trail: _Trail, time: float, objects: Sequence[TrackedPoint], persistence: float
 ) -> _Trail:
@@ -92,8 +102,8 @@ def paint(
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         nonlocal trail
-        if time > trail.frame_time:
-            trail = _advance(trail, time, objects, persistence)
+        if time != trail.frame_time:
+            trail = _advance(_since(trail, time), time, objects, persistence)
 
         painted, background = render_pair(primary, secondary, time, ctx, led, objects)
         led_x, led_y = led.p.x, led.p.y

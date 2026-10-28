@@ -15,10 +15,22 @@ from ...types import (
 )
 from .._common import clamp_unit, render_pair
 
+_MAX_SPEED_UP = 100.0
+"""The largest speed factor of ``speed up``.
+
+The factor is ``1 / (1 - intensity)``. It grows without a limit as a person
+comes near the point, and it divides by zero when the intensity reaches 1.
+"""
+
 
 def _closest(target: TrackedPoint, objects: Sequence[TrackedPoint]) -> float:
     """Get the distance from ``target`` to the closest person."""
     return min((obj - target).length for obj in objects)
+
+
+def _speed_up(intensity: float) -> float:
+    """Get the speed factor of ``speed up``, or infinity at full intensity."""
+    return 1 / (1 - intensity) if intensity < 1 else float("inf")
 
 
 def _advance(
@@ -38,7 +50,10 @@ def _advance(
     """
     match mode:
         case SpeedMode.SPEED_UP:
-            return animation_time + t_diff / (1 - intensity) * multiplier
+            return (
+                animation_time
+                + t_diff * min(_speed_up(intensity), _MAX_SPEED_UP) * multiplier
+            )
         case SpeedMode.SLOW_DOWN:
             return animation_time + t_diff / (1 + intensity) * multiplier
         case _:
@@ -134,7 +149,7 @@ def proximity_speed(
                 mode,
             )
             if objects
-            else animation_time + (time - real_time)
+            else animation_time + (time - real_time) * multiplier
         )
         clock = (next_time, time)
         return render(animation, next_time, ctx, led, objects)

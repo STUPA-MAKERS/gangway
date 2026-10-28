@@ -1,2 +1,9 @@
 .next
 node_modules
+
+# next-pwa writes the service worker and its helpers into public/ on every build
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+public/fallback-*.js

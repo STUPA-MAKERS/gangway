@@ -4,9 +4,8 @@
 
   # Defines
   - `users.users.gangway` — the admin account for remote debug and deploy, in
-    wheel. `adminKeys` holds the key that the old Raspberry Pi OS install
-    trusted, the key of jf from the admin list of nixos-stupa
-    (site/trust.nix), and one more admin key. `gpio`, `spi` and `i2c` are not here: NixOS has no
+    wheel. `adminKeys` holds the keys of frederik, of jf (from the admin
+    list of nixos-stupa, site/trust.nix) and of thies. `gpio`, `spi` and `i2c` are not here: NixOS has no
     such groups, and the LED service runs as root because the driver maps
     /dev/mem
   - `users.users.fsi` — a second name for the same account. It has the same
@@ -35,9 +34,8 @@ let
 
   adminKeys = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJYsQKoL4csVY7qyJn7rXskjAZECwihK0BVoNGbVbEFv frederik@beimgraben.net"
-
-    "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCdhqti0d/tt3PGhmfqE2D2F2A1tl83cGagqPJ1abUzdCPDx2Sy3cbqBjitFuYT/847lwj1jblZ6H6LUjpp8iySHv+Tziykeil5bEmo+6gpyHgcrSmJ4hbfPEKZr3/FMqJACVQ0V5SxqsjtJwqN5h2l2Fspb0vdJa3nW+Fnuthec8CVgzVJQzzNGCXJJdzEstJtuS+/kgJ8c433k9XSgAz/13XNvfqKlFjO/9q6mJs+gb726WJaok6Z67j6Uqr67CH/NbUtssuya0lIbWWlMFhdQZfbrQEsphFTOsSdl0bxRQxpCiRIb3aHrG2gaHbuxBCzBd743lKh8SVYmpDe6ilWNbUV3tBgT4WV2mToIf5cUigo0PhJoRyztV5w7E7u2y9/b3j8TryKAosIuuoIxOzZwTLAGgJeRFecxohrsS3/SBV4kN/km0qXYWW8bFzV6Vlg5X/+qZ4ZBGtzoIW61tvJLAc41qn329hQEOD6m3FpPWa6poIJBq/eADyC2EWGmZc= jf@framework-jf"
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAoYzQl2cSQCl2NEWY0/dt8LkHre11guZ7HQOtUKPBpL"
+    "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCdhqti0d/tt3PGhmfqE2D2F2A1tl83cGagqPJ1abUzdCPDx2Sy3cbqBjitFuYT/847lwj1jblZ6H6LUjpp8iySHv+Tziykeil5bEmo+6gpyHgcrSmJ4hbfPEKZr3/FMqJACVQ0V5SxqsjtJwqN5h2l2Fspb0vdJa3nW+Fnuthec8CVgzVJQzzNGCXJJdzEstJtuS+/kgJ8c433k9XSgAz/13XNvfqKlFjO/9q6mJs+gb726WJaok6Z67j6Uqr67CH/NbUtssuya0lIbWWlMFhdQZfbrQEsphFTOsSdl0bxRQxpCiRIb3aHrG2gaHbuxBCzBd743lKh8SVYmpDe6ilWNbUV3tBgT4WV2mToIf5cUigo0PhJoRyztV5w7E7u2y9/b3j8TryKAosIuuoIxOzZwTLAGgJeRFecxohrsS3/SBV4kN/km0qXYWW8bFzV6Vlg5X/+qZ4ZBGtzoIW61tvJLAc41qn329hQEOD6m3FpPWa6poIJBq/eADyC2EWGmZc= jf@jfrey.de"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAoYzQl2cSQCl2NEWY0/dt8LkHre11guZ7HQOtUKPBpL thies@mcds.moe"
   ];
 
   account = {

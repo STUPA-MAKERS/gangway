@@ -124,7 +124,7 @@ and SSH key, so `ssh fsi@gangway.local` also works.
 | Interface | Address | Function |
 |-----------|---------|----------|
 | `eth0` | 10.0.0.1/24 | Private LAN for the Xovis sensor. dnsmasq gives DHCP leases from 10.0.0.2 to 10.0.0.254. |
-| `wlan0` | DHCP | Uplink over "Iphone Hotspot" or "freeCampus". The Pi masquerades the sensor LAN through this link. |
+| `wlan0` | DHCP | Uplink over "Iphone Hotspot", the FRITZ!Box at the site. The Pi masquerades the sensor LAN through this link. |
 
 | Port | Service | Reachable from |
 |------|---------|----------------|

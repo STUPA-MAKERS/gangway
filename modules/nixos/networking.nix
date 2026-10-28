@@ -12,11 +12,11 @@
   - `systemd.network.networks."10-sensor-lan"` — eth0 at the static
     10.0.0.1/24, with no DHCP client
   - `systemd.network.networks."20-wireless"` — DHCP on wlan0
-  - `networking.wireless` — wpa_supplicant with the "Iphone Hotspot" and
-    "freeCampus" networks. Both passwords come from the `wifi-env` secret in
-    secrets/gangway.yaml, which holds one `name=password` line per network.
-    wpa_supplicant then never writes a password into the Nix store.
-    "Iphone Hotspot" is the name of the FRITZ!Box network at the site
+  - `networking.wireless` — wpa_supplicant with the "Iphone Hotspot"
+    network, which is the FRITZ!Box at the site. The password comes from
+    the `wifi-env` secret in secrets/gangway.yaml, which holds one
+    `name=password` line per network. wpa_supplicant then never writes a
+    password into the Nix store
   - `hardware.wirelessRegulatoryDatabase`, `cfg80211.ieee80211_regdom` and
     `country=DE` — the German radio rules, as the old install set in
     cmdline.txt. Without them the WiFi chip uses the world rules, which
@@ -69,10 +69,7 @@
         extraConfig = "country=DE";
         interfaces = [ "wlan0" ];
         secretsFile = config.sops.secrets.wifi-env.path;
-        networks = {
-          "Iphone Hotspot".pskRaw = "ext:hotspot_psk";
-          "freeCampus".pskRaw = "ext:freecampus_psk";
-        };
+        networks."Iphone Hotspot".pskRaw = "ext:hotspot_psk";
       };
 
       services.dnsmasq = {

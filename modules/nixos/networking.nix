@@ -11,7 +11,11 @@
     names eth0 and wlan0 that the NAT, dnsmasq and firewall rules name
   - `systemd.network.networks."10-sensor-lan"` — eth0 at the static
     10.0.0.1/24, with no DHCP client
-  - `systemd.network.networks."20-wireless"` — DHCP on wlan0
+  - `systemd.network.networks."20-wireless"` — DHCP on wlan0. The link
+    ignores the NTP servers from DHCP and router advertisements: the
+    FRITZ!Box names itself, but does not answer NTP, and timesyncd prefers
+    a server of the link over the fallback pool. The Pi has no RTC, so
+    without NTP the schedule animations use a wrong clock
   - `networking.wireless` — wpa_supplicant with the "Iphone Hotspot"
     network, which is the FRITZ!Box at the site. The password comes from
     the `wifi-env` secret in secrets/gangway.yaml, which holds one
@@ -26,7 +30,8 @@
     on an automatic channel can use those channels, and the Pi then does
     not see the network
   - `services.dnsmasq` — DHCP and DNS on eth0 only. 10.0.0.2 to 10.0.0.254,
-    with the Pi as router and DNS server. `resolveLocalQueries` is off, so
+    with the Pi as router and DNS server. The Xovis sensor always gets
+    10.0.0.250 by its MAC address, because nginx proxies `/live` to it. `resolveLocalQueries` is off, so
     the Pi itself keeps using systemd-resolved
   - `networking.nat` — masquerades eth0 out through wlan0, so the sensor
     reaches the internet
@@ -57,6 +62,8 @@
         "20-wireless" = {
           matchConfig.Name = "wlan0";
           networkConfig.DHCP = "yes";
+          dhcpV4Config.UseNTP = false;
+          dhcpV6Config.UseNTP = false;
           linkConfig.RequiredForOnline = "no";
         };
       };
@@ -85,6 +92,7 @@
           bind-interfaces = true;
           listen-address = "10.0.0.1";
           dhcp-range = [ "10.0.0.2,10.0.0.254,255.255.255.0,12h" ];
+          dhcp-host = [ "d8:80:39:d7:41:02,xovis,10.0.0.250" ];
           dhcp-option = [
             "option:router,10.0.0.1"
             "option:dns-server,10.0.0.1"

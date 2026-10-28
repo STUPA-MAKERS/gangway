@@ -1,3 +1,8 @@
+"""The HTTP API for the frontend.
+
+All routes need the API key in the ``X-API-Key`` header.
+"""
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -5,6 +10,7 @@ from . import animations, config, data, presets, visualization
 from .security import get_api_key
 
 app = FastAPI()
+"""The FastAPI application."""
 
 app.add_middleware(
     CORSMiddleware,

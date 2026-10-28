@@ -1,4 +1,1 @@
-#!/usr/bin/env python3
-"""
-Model for everythin PC-Related
-"""
+"""Receive person tracking events from the Xovis PC2-L sensor."""

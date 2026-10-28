@@ -1,36 +1,49 @@
-#!/usr/bin/env python3
-"""
-Idle Animation Definitions
-"""
+"""Animations that do not need detected persons."""
 
 import math
 import random
-from typing import Iterable, List, Literal
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Literal
 
 from rpi_ws2805 import RGBCCT
 
 from ..helpers import interpolate_rgbcct
-from ..types import LED, Animation, SceneContext, TrackedPoint
+from ..types import LED, Animation, AnimationOrColor, SceneContext, TrackedPoint
 from .meta import alternate, blend
 
 
+@dataclass(frozen=True)
+class _Wave:
+    direction: tuple[float, float]
+    color: RGBCCT
+    phase: float
+
+
 def wave(
-    colors: List[RGBCCT],
+    colors: list[RGBCCT],
     n_waves: int = 3,
     speed: float = 50.0,
     wavelength: float = 200.0,
 ) -> Animation:
-    waves = []
+    """Add up plane waves that move in random directions.
+
+    Args:
+        colors: The colors to select from. Each wave gets a random color.
+        n_waves: The number of waves.
+        speed: The speed of the waves in floor units per second.
+        wavelength: The wavelength in floor units.
+
+    Returns:
+        The animation.
+    """
+    waves: list[_Wave] = []
     for i in range(n_waves):
         angle = random.uniform(0, 2 * math.pi)
         direction = (math.cos(angle), math.sin(angle))
         color = random.choice(colors)
         waves.append(
-            {
-                "direction": direction,
-                "color": color,
-                "phase": (i / n_waves) * 2 * math.pi,
-            }
+            _Wave(direction=direction, color=color, phase=(i / n_waves) * 2 * math.pi)
         )
 
     k = 2 * math.pi / wavelength
@@ -39,18 +52,18 @@ def wave(
         time: float,
         _ctx: SceneContext,
         led: LED,
-        *_args,
-        **_kwargs,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        r, g, b, cw, ww = 0, 0, 0, 0, 0
+        r, g, b, cw, ww = 0.0, 0.0, 0.0, 0.0, 0.0
 
         for wave_params in waves:
-            direction = wave_params["direction"]
-            color = wave_params["color"]
-            phase = wave_params["phase"]
+            direction = wave_params.direction
+            color = wave_params.color
 
             proj = led.p.x * direction[0] + led.p.y * direction[1]
-            intensity = (1 + math.sin(k * proj - (k * speed * time) + phase)) / 2
+            intensity = (
+                1 + math.sin(k * proj - (k * speed * time) + wave_params.phase)
+            ) / 2
 
             r += color.r * intensity
             g += color.g * intensity
@@ -69,7 +82,7 @@ def wave(
     return animation
 
 
-def _hsv_to_rgb(h, s, v):
+def _hsv_to_rgb(h: float, s: float, v: float) -> tuple[int, int, int]:
     if s == 0.0:
         return int(v * 255), int(v * 255), int(v * 255)
     i = int(h * 6.0)
@@ -94,12 +107,21 @@ def _hsv_to_rgb(h, s, v):
 
 
 def rainbow(speed: float = 0.1, spread: float = 3.0) -> Animation:
+    """Move a rainbow gradient along the x axis.
+
+    Args:
+        speed: The hue change per second.
+        spread: The number of rainbows across the floor.
+
+    Returns:
+        The animation.
+    """
+
     def animation(
         time: float,
         ctx: SceneContext,
         led: LED,
-        *_args,
-        **_kwargs,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         x_norm = (led.p.x - ctx.floor.p1.x) / (ctx.floor.p2.x - ctx.floor.p1.x)
         hue = (x_norm * spread + time * speed) % 1.0
@@ -114,12 +136,22 @@ def fire(
     flicker_speed: float = 0.1,
     flicker_intensity: float = 0.5,
 ) -> Animation:
+    """Flicker the brightness of a color at random, like a fire.
+
+    Args:
+        base_color: The color at full brightness.
+        flicker_speed: The time between two brightness changes in seconds.
+        flicker_intensity: The maximum brightness decrease, from 0 to 1.
+
+    Returns:
+        The animation.
+    """
+
     def animation(
         time: float,
         _ctx: SceneContext,
         led: LED,
-        *_args,
-        **_kwargs,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         time_bucket = int(time / flicker_speed)
         seed = hash((led.p.x, time_bucket))
@@ -142,12 +174,22 @@ def theater_chase(
     speed: float = 1.0,
     spacing: int = 4,
 ) -> Animation:
+    """Move a pattern of lit LEDs along the LED chain.
+
+    Args:
+        color: The color of the lit LEDs.
+        speed: The speed. A value of 1 gives 10 steps per second.
+        spacing: The distance between two lit LEDs.
+
+    Returns:
+        The animation.
+    """
+
     def animation(
         time: float,
         _ctx: SceneContext,
         led: LED,
-        *_args,
-        **_kwargs,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         time_offset = int(time * speed * 10)
         if (led.index - time_offset) % spacing == 0:
@@ -157,20 +199,34 @@ def theater_chase(
     return animation
 
 
+_STROBO_COLORS = (
+    RGBCCT(r=255, g=255, b=255, cw=255, ww=255),
+    RGBCCT(),
+    RGBCCT(r=255),
+    RGBCCT(),
+    RGBCCT(b=255),
+)
+
+
 def strobo(
-    colors: List[RGBCCT] = [
-        RGBCCT(r=255, g=255, b=255, cw=255, ww=255),
-        RGBCCT(),
-        RGBCCT(r=255),
-        RGBCCT(),
-        RGBCCT(b=255),
-    ],
+    colors: Sequence[RGBCCT] = _STROBO_COLORS,
     frequency: int = 100,
 ) -> Animation:
+    """Show a sequence of colors on all LEDs, one color for each step.
+
+    Args:
+        colors: The color sequence.
+        frequency: The number of steps per second.
+
+    Returns:
+        The animation.
+    """
+
     def animation(
         time: float,
-        *_args,
-        **_kwargs,
+        _ctx: SceneContext,
+        _led: LED,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         return colors[int(time * frequency) % len(colors)]
 
@@ -179,16 +235,27 @@ def strobo(
 
 def swing(
     color: RGBCCT = RGBCCT(r=255, g=255, b=255, cw=255),
-    direction: Literal["x"] | Literal["y"] = "y",
+    direction: Literal["x", "y"] = "y",
     wavelength: int = 50,
     speed: float = 10,
 ) -> Animation:
+    """Move a band of light back and forth along an axis.
+
+    Args:
+        color: The color of the band.
+        direction: The axis of the movement.
+        wavelength: The distance that halves the brightness, in floor units.
+        speed: The angular speed of the movement in radians per second.
+
+    Returns:
+        The animation.
+    """
+
     def animation(
         time: float,
         ctx: SceneContext,
         led: LED,
-        *_args,
-        **_kwargs,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         coordinate: float = led.p.x if direction == "x" else led.p.y
         floor_len: float = (
@@ -212,13 +279,20 @@ def swing(
 
 
 def static(color: RGBCCT = RGBCCT(r=255, g=255, b=255)) -> Animation:
-    """
-    A simple animation that returns a static color.
+    """Show one color on all LEDs.
+
+    Args:
+        color: The color.
+
+    Returns:
+        The animation.
     """
 
     def animation(
-        *_args,
-        **_kwargs,
+        _time: float,
+        _ctx: SceneContext,
+        _led: LED,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         return color
 
@@ -226,55 +300,57 @@ def static(color: RGBCCT = RGBCCT(r=255, g=255, b=255)) -> Animation:
 
 
 def idle(
-    idle_animation: Animation | RGBCCT, active_animation: Animation | RGBCCT
+    idle_animation: AnimationOrColor, active_animation: AnimationOrColor
 ) -> Animation:
-    """
-    A simple animation that returns a static color.
+    """Select an animation from the presence of persons.
+
+    Args:
+        idle_animation: The animation when nobody is present.
+        active_animation: The animation when one or more persons are present.
+
+    Returns:
+        The animation.
     """
 
     def animation(
         time: float,
         ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *_args,
-        **_kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        objects = [object for object in objects]
+        objects = list(objects)
 
         if len(objects) == 0:
             return (
                 idle_animation
                 if isinstance(idle_animation, RGBCCT)
-                else idle_animation(
-                    time,
-                    ctx,
-                    led,
-                    objects,
-                    *_args,
-                    **_kwargs,
-                )
+                else idle_animation(time, ctx, led, objects)
             )
-        else:
-            return (
-                active_animation
-                if isinstance(active_animation, RGBCCT)
-                else active_animation(
-                    time,
-                    ctx,
-                    led,
-                    objects,
-                    *_args,
-                    **_kwargs,
-                )
-            )
+        return (
+            active_animation
+            if isinstance(active_animation, RGBCCT)
+            else active_animation(time, ctx, led, objects)
+        )
 
     return animation
 
 
 def sparkle(density: float = 0.1, speed: float = 20.0) -> Animation:
+    """Light random LEDs in random colors.
+
+    Args:
+        density: The part of the LEDs that are lit, from 0 to 1.
+        speed: The number of changes per second.
+
+    Returns:
+        The animation.
+    """
+
     def animation(
-        time: float, ctx: SceneContext, led: LED, *_args, **_kwargs
+        time: float,
+        _ctx: SceneContext,
+        led: LED,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         seed = hash((led.index, int(time * speed)))
         rng = random.Random(seed)
@@ -290,12 +366,21 @@ def sparkle(density: float = 0.1, speed: float = 20.0) -> Animation:
 
 
 def plasma(speed: float = 0.5, scale: float = 0.05) -> Animation:
-    """
-    A classic 'plasma' effect using sine waves.
+    """Show a plasma effect from a sum of sine waves.
+
+    Args:
+        speed: The speed of the effect.
+        scale: The spatial frequency of the waves.
+
+    Returns:
+        The animation.
     """
 
     def animation(
-        time: float, ctx: SceneContext, led: LED, *_args, **_kwargs
+        time: float,
+        _ctx: SceneContext,
+        led: LED,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         t = time * speed
         v = 0.0
@@ -315,10 +400,11 @@ def plasma(speed: float = 0.5, scale: float = 0.05) -> Animation:
 
 
 def rave() -> Animation:
+    """Alternate between strobe, glitter rainbow, chase and sparkle effects.
+
+    Returns:
+        The animation.
     """
-    A high-energy blend of animations suitable for a rave.
-    """
-    # 1. Intense Strobe
     strobe_anim = strobo(
         colors=[
             RGBCCT(r=255),
@@ -332,19 +418,13 @@ def rave() -> Animation:
         ],
         frequency=75,
     )
-
-    # 2. Fast Rainbow
     rainbow_anim = rainbow(speed=2.0, spread=2.0)
-
-    # 3. Sparkle
     sparkle_anim = sparkle(density=0.2, speed=30.0)
-
-    # 4. Chase
     chase_anim = theater_chase(color=RGBCCT(r=255, g=0, b=255), speed=4.0, spacing=5)
 
     return alternate(
         strobe_anim,
-        blend(rainbow_anim, sparkle_anim),  # Glittery rainbow
+        blend(rainbow_anim, sparkle_anim),
         chase_anim,
         sparkle_anim,
         length=1.5,
@@ -354,16 +434,22 @@ def rave() -> Animation:
 def linear_rainbow(
     direction: Literal["x", "y"] = "x", speed: float = 0.1, spread: float = 3.0
 ) -> Animation:
-    """
-    Rainbow animation that moves linearly across the floor in x or y direction.
+    """Move a rainbow gradient along the x or y axis.
+
+    Args:
+        direction: The axis of the gradient.
+        speed: The hue change per second.
+        spread: The number of rainbows across the floor.
+
+    Returns:
+        The animation.
     """
 
     def animation(
         time: float,
         ctx: SceneContext,
         led: LED,
-        *_args,
-        **_kwargs,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         if direction == "x":
             pos = led.p.x
@@ -375,7 +461,6 @@ def linear_rainbow(
             max_p = ctx.floor.p2.y
 
         length = max_p - min_p
-        # Avoid division by zero
         if length == 0:
             length = 1.0
 
@@ -391,34 +476,37 @@ def northern_lights(
     speed: float = 0.5,
     intensity: float = 0.8,
 ) -> Animation:
-    """
-    A flowing animation with green, teal, and purple colors.
+    """Show flowing curtains of green, teal and purple.
+
+    Args:
+        speed: The speed of the flow.
+        intensity: The brightness, from 0 to 1.
+
+    Returns:
+        The animation.
     """
 
     def animation(
         time: float,
         ctx: SceneContext,
         led: LED,
-        *_args,
-        **_kwargs,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         t = time * speed
 
-        # Normalized coordinates
         dx = ctx.floor.p2.x - ctx.floor.p1.x
         dy = ctx.floor.p2.y - ctx.floor.p1.y
         x_norm = (led.p.x - ctx.floor.p1.x) / (dx if dx != 0 else 1.0)
         y_norm = (led.p.y - ctx.floor.p1.y) / (dy if dy != 0 else 1.0)
 
-        # Mix multiple sine waves for the "curtain" effect
         v1 = math.sin(x_norm * 2.0 + t)
         v2 = math.sin(y_norm * 1.5 - t * 0.7 + v1)
         v3 = math.sin((x_norm + y_norm) * 3.0 + t * 1.5)
 
-        # Northern lights colors: mostly greens and purples
-        r = (math.sin(v1 + t) * 0.5 + 0.5) * 50  # Some purple/pink
-        g = (math.sin(v2 + t * 0.5) * 0.5 + 0.5) * 200  # Primary green
-        b = (math.sin(v3 - t) * 0.5 + 0.5) * 150  # Deep blue/purple
+        # Green is the main color. Red and blue only add purple tints.
+        r = (math.sin(v1 + t) * 0.5 + 0.5) * 50
+        g = (math.sin(v2 + t * 0.5) * 0.5 + 0.5) * 200
+        b = (math.sin(v3 - t) * 0.5 + 0.5) * 150
 
         return RGBCCT(
             r=int(r * intensity),
@@ -433,19 +521,22 @@ def lightning_storm(
     frequency: float = 0.02,
     base_brightness: float = 0.00,
 ) -> Animation:
-    """
-    Occasional bright flashes like a lightning storm.
+    """Show random bright flashes over a dim background, like lightning.
+
+    Args:
+        frequency: The probability of a flash in each 0.5 second period.
+        base_brightness: The cold white background level, from 0 to 1.
+
+    Returns:
+        The animation.
     """
 
     def animation(
         time: float,
         _ctx: SceneContext,
         led: LED,
-        *_args,
-        **_kwargs,
+        _objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        # Determine if there's a flash happening
-        # Flash duration around 0.2s
         flash_period = 0.5
         flash_time = time % flash_period
         flash_seed = int(time / flash_period)
@@ -454,8 +545,7 @@ def lightning_storm(
         has_flash = rng.random() < frequency
 
         if has_flash and flash_time < 0.2:
-            # Flash intensity peaks and then flickers
-            # Use led index to add some spatial variety to the flash
+            # A seed from the LED index gives each LED a different flicker.
             led_flicker = random.Random(flash_seed + led.index).random() * 0.4 + 0.6
             flash_intensity = (
                 math.exp(-flash_time * 15)
@@ -465,7 +555,6 @@ def lightning_storm(
             val = int(255 * flash_intensity)
             return RGBCCT(r=val, g=val, b=val, cw=val, ww=val)
 
-        # Background: very dim blue/cool white (stormy clouds)
         base = int(255 * base_brightness)
         return RGBCCT(cw=base)
 

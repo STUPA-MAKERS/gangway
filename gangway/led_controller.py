@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
-"""
-Controller Thread for Animations
-"""
+"""The render thread that drives the LED strips."""
 
 import collections
 import time
+from collections.abc import Iterator, Sequence
 from threading import Thread
-from typing import Dict, List
+from typing import override
 
 from rpi_ws2805 import RGBCCT, PixelStrip
 
@@ -20,38 +18,53 @@ from .defaults import (
     LED_PIN,
     WS2805_STRIP,
 )
-from .types import LED, Animation, Rectangle, SceneContext, TrackedPoint
+from .types import LED, AnimationOrColor, Rectangle, SceneContext, TrackedPoint
 
 
 class LEDController(Thread):
-    """
-    Controller Thread for LED-Strips. Can be updated with object positions to use in animations.
+    """Render the active animation to the LED strips in a loop.
+
+    Attributes:
+        leds: All LEDs with their floor positions.
+        running: False tells the render loop to stop after the current frame.
+        strip: The LED driver.
+        floor: The floor area.
+        animation: The active animation.
+        config: The config that the controller reads.
+        current_colors: The last colors sent to the strip, by LED index.
+        last_objects: The last detected persons.
+        init_time: The start time of the animation, as a Unix timestamp.
+        fps: The mean frames per second.
+        tpf_min: The shortest frame time in seconds.
+        tpf_max: The longest frame time in seconds.
+        tpf_avg: The mean frame time in seconds.
     """
 
-    # Config
-    leds: List[LED]
+    leds: list[LED]
     running: bool = True
     strip: PixelStrip
     floor: Rectangle
-    animation: Animation | RGBCCT
+    animation: AnimationOrColor
 
     config: GANGWAYConfig
 
-    # State
-    current_colors: Dict[int, RGBCCT]
-    last_objects: List[TrackedPoint]  # An object is equivalent to a detected person
+    current_colors: dict[int, RGBCCT]
+    last_objects: Sequence[TrackedPoint]
 
-    # Time counters
     init_time: float
 
-    # Stats
     fps: float = 0.0
     tpf_min: float = 0.0
     tpf_max: float = 0.0
     tpf_avg: float = 0.0
-    _frame_times: collections.deque
+    _frame_times: collections.deque[float]
 
     def __init__(self, gangway_config: GANGWAYConfig = CONFIG) -> None:
+        """Read the config and initialize the LED driver.
+
+        Args:
+            gangway_config: The config to read.
+        """
         super().__init__()
 
         self.init_time = time.time()
@@ -77,6 +90,7 @@ class LEDController(Thread):
         self.strip.begin()
 
     def reload_config(self) -> None:
+        """Read the LEDs, the animation and the floor from the config again."""
         self.leds = self.config.LEDS
         self.animation = self.config.ANIMATION
         self.floor = self.config.FLOOR
@@ -88,52 +102,60 @@ class LEDController(Thread):
 
     @property
     def time(self) -> float:
+        """The time since the start of the animation in seconds."""
         return time.time() - self.init_time
 
     def stop(self) -> None:
+        """Stop the render loop and wait for the thread to end."""
         self.running = False
         self.join()
 
-    def update_objects(self, objects: List[TrackedPoint] = []) -> None:
-        """
-        Inform the Thread of new objects to render.
-        Will switch the thread to idle animation if called without parameters or empty list.
-        """
+    def update_objects(self, objects: Sequence[TrackedPoint] = ()) -> None:
+        """Set the detected persons for the next frames.
 
+        Args:
+            objects: The detected persons. An empty sequence means that
+                nobody is present.
+        """
         self.last_objects = objects
 
     def color_of(self, led: LED) -> RGBCCT:
-        """
-        Get the current color of an LED
-        """
+        """Get the current color of an LED.
 
+        Args:
+            led: The LED.
+
+        Returns:
+            The color that the controller last sent to the LED.
+        """
         return RGBCCT(
             value=self.current_colors[led.index] & 0xFFFFFFFFFF,
         )
 
-    def apply_colors(self, colors: Dict[int, RGBCCT]) -> None:
+    def apply_colors(self, colors: dict[int, RGBCCT]) -> None:
+        """Send colors to the strip.
+
+        Args:
+            colors: The new colors, by LED index.
+        """
         self.current_colors = colors
 
-        _ = [
-            self.strip.setPixelColor(led.index, (c := self.color_of(led))) or c
-            for led in self.leds
-        ]  # Use Generator cause it is more efficient in python
+        for led in self.leds:
+            self.strip.setPixelColor(led.index, self.color_of(led))
 
         self.strip.show()
 
     @property
-    def context(self):
+    def context(self) -> SceneContext:
+        """The scene context for the animation."""
         return SceneContext(
             self.floor,
             self.leds,
         )
 
     @property
-    def animate(self):
-        """
-        Infinite iterator of colors
-        """
-
+    def animate(self) -> Iterator[dict[int, RGBCCT]]:
+        """An endless iterator over the colors of each frame."""
         while True:
             yield {
                 led.index: self.animation
@@ -147,16 +169,14 @@ class LEDController(Thread):
                 for led in self.leds
             }
 
+    @override
     def run(self) -> None:
-        """
-        Main animation loop
-        """
-
+        """Render frames until `stop` is called."""
         self.init_time = time.time()
         last_frame_start = time.perf_counter()
 
         for colors in self.animate:
-            # Measure time since last frame start (Total Frame Time)
+            # The frame time includes the render time and the strip update.
             now = time.perf_counter()
             dt = now - last_frame_start
             last_frame_start = now

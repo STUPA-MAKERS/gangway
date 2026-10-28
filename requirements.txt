@@ -1,8 +1,0 @@
-numpy
-setuptools
-PyYAML
-fastapi
-uvicorn
-aiomqtt
-./rpi-ws2805-python/library
-python-dotenv

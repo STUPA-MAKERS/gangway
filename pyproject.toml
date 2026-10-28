@@ -1,0 +1,87 @@
+[project]
+name = "gangway"
+version = "0.1.0"
+description = "LED controller for the gangway installation"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.13"
+dependencies = [
+  "aiomqtt",
+  "fastapi",
+  "numpy",
+  "opencv-python",
+  "pydantic>=2",
+  "python-dotenv",
+  "pyyaml",
+  "requests",
+  "uvicorn",
+  # The WS2805 driver is not on PyPI. Install it from rpi-ws2805-python/library.
+  "rpi_ws2805",
+]
+
+[dependency-groups]
+dev = ["basedpyright", "httpx", "pytest", "ruff"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+extend-exclude = ["rpi-ws2805-python", "frontend", "nix", "modules", "result*", ".venv"]
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "W",
+  "F",
+  "I",
+  "UP",
+  "B",
+  "SIM",
+  "RUF",
+  "D",
+  "ANN",
+  "PL",
+  "C4",
+  "RET",
+  "PIE",
+  "ARG",
+]
+ignore = [
+  # Animation math uses many literal constants. Names for each would not help.
+  "PLR2004",
+  # Animation factories take one argument for each tunable parameter.
+  "PLR0913",
+  "PLR0917",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The animations endpoint reports the name of the typing origin of each field
+# ("Union", not "UnionType"). The X | Y syntax changes that name in the API.
+"gangway/api/models.py" = ["UP007", "UP045"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-bugbear]
+# RGBCCT is an immutable int subclass, so a shared default value is safe.
+extend-immutable-calls = ["rpi_ws2805.RGBCCT"]
+
+[tool.basedpyright]
+include = ["main.py", "gangway", "tests"]
+exclude = ["rpi-ws2805-python", "frontend", "nix", "modules", "result*", ".venv", "**/__pycache__"]
+stubPath = "typings"
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+# GANGWAYConfig keeps its settings in uppercase attributes, and load() sets
+# them again on each reload. The names are part of the module API.
+reportConstantRedefinition = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra"]
+# The SWIG bindings of rpi_ws2805 trigger these warnings on import.
+filterwarnings = [
+  "ignore:builtin type Swig:DeprecationWarning",
+  "ignore:builtin type swigvarlink:DeprecationWarning",
+]

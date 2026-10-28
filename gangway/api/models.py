@@ -1,12 +1,18 @@
+"""Pydantic models that validate the animation config.
+
+Each animation has a parameter model and a wrapper model. The wrapper model
+has one field. The field name is the animation name, and the field type is
+the parameter model. The animations endpoint reads these models to describe
+the animations to the frontend.
+
+The models use ``Union`` and ``Optional``, not ``X | Y``. The animations
+endpoint reports the name of the typing origin, and ``X | Y`` changes that
+name from ``Union`` to ``UnionType``.
 """
-This file contains the Pydantic models for validating animation configurations.
-"""
 
-from typing import List, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
-from pydantic import BaseModel, Field
-
-# --- Base Models ---
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RGBCCTModel(BaseModel):
@@ -19,16 +25,10 @@ class RGBCCTModel(BaseModel):
     ww: int = Field(0, ge=0, le=255)
 
 
-# This will be updated later with all the specific animation models.
-# AnyAnimationModel = Literal["AnyAnimationModel"]
-
-# --- Parameter Models for each Animation ---
-
-
 class AlternateParams(BaseModel):
     """Parameters for the alternate animation."""
 
-    animations: List["AnimationModel"] = Field(default_factory=list)
+    animations: list["AnimationModel"] = Field(default_factory=list)
     length: float = Field(default=10, ge=0)
 
 
@@ -56,7 +56,7 @@ class StaticParams(BaseModel):
 class StroboParams(BaseModel):
     """Parameters for the strobo animation."""
 
-    colors: List[RGBCCTModel] = Field(
+    colors: list[RGBCCTModel] = Field(
         default=[
             RGBCCTModel(r=255, g=255, b=255, cw=255, ww=255),
             RGBCCTModel(r=0, g=0, b=0, cw=0, ww=0),
@@ -88,7 +88,7 @@ class Theater_chaseParams(BaseModel):
 class WaveParams(BaseModel):
     """Parameters for the wave animation."""
 
-    colors: List[RGBCCTModel] = Field(default_factory=list)
+    colors: list[RGBCCTModel] = Field(default_factory=list)
     n_waves: int = Field(default=3, ge=0)
     speed: float = Field(default=50.0, ge=0)
     wavelength: float = Field(default=200.0, ge=0)
@@ -117,8 +117,6 @@ class ExponentialParams(BaseModel):
 class OffParams(BaseModel):
     """Parameters for the off animation."""
 
-    pass
-
 
 class IdleParams(BaseModel):
     """Parameters for the idle animation."""
@@ -130,21 +128,18 @@ class IdleParams(BaseModel):
         default=RGBCCTModel(r=0, g=255, b=0, cw=0, ww=0)
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class BlendParams(BaseModel):
     """Parameters for the blend animation."""
 
-    animations: List["AnimationModel"] = Field(default_factory=list)
+    animations: list["AnimationModel"] = Field(default_factory=list)
     mode: Literal["average", "max"] = "average"
 
 
 class RaveParams(BaseModel):
     """Parameters for the rave animation."""
-
-    pass
 
 
 class ScheduleParams(BaseModel):
@@ -212,7 +207,7 @@ class ProximityParams(BaseModel):
 
 
 class ProximitySpeedParams(BaseModel):
-    """Parameters for the proximity animation."""
+    """Parameters for the proximity_speed animation."""
 
     animation: Union["AnimationModel", RGBCCTModel] = Field(
         default=RGBCCTModel(r=255, g=255, b=255, cw=0, ww=0)
@@ -305,21 +300,24 @@ class ExtrapolateParams(BaseModel):
 
 
 class StripAssignmentParams(BaseModel):
+    """Parameters for one strip assignment of the by_strip animation."""
+
     strip: int
     animation: Union["AnimationModel", RGBCCTModel]
 
 
 class StripAssignmentWrapper(BaseModel):
+    """Wrapper for one strip assignment of the by_strip animation."""
+
     strip_assignment: StripAssignmentParams = Field(..., title="Strip Assignment")
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class ByStripParams(BaseModel):
     """Parameters for the by_strip animation."""
 
-    assignments: List[StripAssignmentWrapper] = Field(default_factory=list)
+    assignments: list[StripAssignmentWrapper] = Field(default_factory=list)
     default: Union["AnimationModel", RGBCCTModel] = Field(
         default=RGBCCTModel(r=0, g=0, b=0, cw=0, ww=0)
     )
@@ -331,9 +329,6 @@ class PresetParams(BaseModel):
     name: str = Field(..., description="Name of the preset to load.")
 
 
-# --- Animation Wrapper Models (to enforce {'name': params} structure) ---
-
-
 class AlternateAnimation(BaseModel):
     """Wrapper for the alternate animation."""
 
@@ -343,8 +338,7 @@ class AlternateAnimation(BaseModel):
         description="Alternates between multiple animations over time.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class FireAnimation(BaseModel):
@@ -354,8 +348,7 @@ class FireAnimation(BaseModel):
         ..., title="Fire", description="Simulates a flickering fire effect."
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class RainbowAnimation(BaseModel):
@@ -365,8 +358,7 @@ class RainbowAnimation(BaseModel):
         ..., title="Rainbow", description="A moving rainbow gradient across the floor."
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class StaticAnimation(BaseModel):
@@ -376,8 +368,7 @@ class StaticAnimation(BaseModel):
         ..., title="Static Color", description="Displays a single static color."
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class StroboAnimation(BaseModel):
@@ -387,8 +378,7 @@ class StroboAnimation(BaseModel):
         ..., title="Stroboscope", description="Flashes colors rapidly."
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class SwingAnimation(BaseModel):
@@ -400,8 +390,7 @@ class SwingAnimation(BaseModel):
         description="A smooth swinging movement back and forth along an axis.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class Theater_chaseAnimation(BaseModel):
@@ -413,8 +402,7 @@ class Theater_chaseAnimation(BaseModel):
         description="A classic theater-style chasing lights effect.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class WaveAnimation(BaseModel):
@@ -426,8 +414,7 @@ class WaveAnimation(BaseModel):
         description="Multiple sine waves interfering with each other.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class DotAnimation(BaseModel):
@@ -439,8 +426,7 @@ class DotAnimation(BaseModel):
         description="Lights up area around detected objects.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class ExponentialAnimation(BaseModel):
@@ -452,8 +438,7 @@ class ExponentialAnimation(BaseModel):
         description="Exponential falloff brightness based on object proximity.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class OffAnimation(BaseModel):
@@ -461,8 +446,7 @@ class OffAnimation(BaseModel):
 
     off: OffParams = Field(..., title="Off", description="Turns all LEDs off.")
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class IdleAnimation(BaseModel):
@@ -474,8 +458,7 @@ class IdleAnimation(BaseModel):
         description="Switches between idle and active animations based on presence.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class BlendAnimation(BaseModel):
@@ -485,8 +468,7 @@ class BlendAnimation(BaseModel):
         ..., title="Blend (Meta)", description="Blends multiple animations together."
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class RaveAnimation(BaseModel):
@@ -496,8 +478,7 @@ class RaveAnimation(BaseModel):
         ..., title="Rave", description="High-energy intense light show."
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class ScheduleAnimation(BaseModel):
@@ -509,8 +490,7 @@ class ScheduleAnimation(BaseModel):
         description="Runs different animations based on the time of day.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class PaintAnimation(BaseModel):
@@ -522,8 +502,7 @@ class PaintAnimation(BaseModel):
         description="Draws trails that persist behind moving objects.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class LinearRainbowAnimation(BaseModel):
@@ -533,8 +512,7 @@ class LinearRainbowAnimation(BaseModel):
         ..., title="Linear Rainbow", description="A rainbow moving in a straight line."
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class SmoothAnimation(BaseModel):
@@ -546,8 +524,7 @@ class SmoothAnimation(BaseModel):
         description="Smooths the output of another animation over time.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class PlasmaAnimation(BaseModel):
@@ -559,8 +536,7 @@ class PlasmaAnimation(BaseModel):
         description="Generates a classic, smoothly shifting plasma effect.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProximityAnimation(BaseModel):
@@ -572,21 +548,22 @@ class ProximityAnimation(BaseModel):
         description="Blends animations based on object distance to a point.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProximitySpeedAnimation(BaseModel):
-    """Parameters for the proximity speed animation."""
+    """Wrapper for the proximity_speed animation."""
 
     proximity_speed: ProximitySpeedParams = Field(
         ...,
         title="Proximity to Speed (Responsive)",
-        description="Increases the speed of the animation based on the distance to the target point.",
+        description=(
+            "Increases the speed of the animation based on the distance to the "
+            "target point."
+        ),
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class SparkleAnimation(BaseModel):
@@ -598,8 +575,7 @@ class SparkleAnimation(BaseModel):
         description="Creates a field of randomly twinkling colored pixels.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class NorthernLightsAnimation(BaseModel):
@@ -611,8 +587,7 @@ class NorthernLightsAnimation(BaseModel):
         description="A flowing animation with green, teal, and purple colors.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class LightningStormAnimation(BaseModel):
@@ -624,8 +599,7 @@ class LightningStormAnimation(BaseModel):
         description="Occasional bright flashes like a lightning storm.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class PersistAnimation(BaseModel):
@@ -637,8 +611,7 @@ class PersistAnimation(BaseModel):
         description="Keeps objects alive for a sub-animation after they disappear.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class DayOfWeekAnimation(BaseModel):
@@ -650,8 +623,7 @@ class DayOfWeekAnimation(BaseModel):
         description="Schedule different animations for each day of the week.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class ExponentialAtAnimation(BaseModel):
@@ -660,11 +632,12 @@ class ExponentialAtAnimation(BaseModel):
     exponential_at: ExponentialAtParams = Field(
         ...,
         title="Exponential At",
-        description="Exponential falloff brightness based on proximity to a fixed point.",
+        description=(
+            "Exponential falloff brightness based on proximity to a fixed point."
+        ),
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class ExtrapolateAnimation(BaseModel):
@@ -676,8 +649,7 @@ class ExtrapolateAnimation(BaseModel):
         description="Extrapolates object positions to compensate for latency.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class ByStripAnimation(BaseModel):
@@ -689,8 +661,7 @@ class ByStripAnimation(BaseModel):
         description="Assign different animations to specific LED strips.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
 class PresetAnimation(BaseModel):
@@ -702,11 +673,9 @@ class PresetAnimation(BaseModel):
         description="Loads an existing preset.",
     )
 
-    class Config:
-        extra = "forbid"  # Disallow other keys
+    model_config = ConfigDict(extra="forbid")
 
 
-# --- Union of All Animation Models ---
 AnimationModel = Union[
     AlternateAnimation,
     FireAnimation,
@@ -740,7 +709,6 @@ AnimationModel = Union[
     PresetAnimation,
 ]
 
-# --- Rebuild Models to Resolve Forward References ---
 DayOfWeekParams.model_rebuild()
 ExponentialAtParams.model_rebuild()
 ExtrapolateParams.model_rebuild()

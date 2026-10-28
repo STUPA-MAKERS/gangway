@@ -1,58 +1,88 @@
-#!/usr/bin/env python3
-"""
-Meta-Animation Definitions
-"""
+"""Animations that combine or change other animations."""
 
 import datetime
-from pathlib import Path
-from typing import Dict, Iterable, Literal, Optional, Set, Tuple
+from collections.abc import Iterable, Sequence
+from typing import Literal
 
 import yaml
 from rpi_ws2805 import RGBCCT
 
-from ..helpers import interpolate_rgbcct, parse_animation
-from ..types import LED, Animation, Point, SceneContext, TrackedPoint
+from ..helpers import as_animation, interpolate_rgbcct, parse_animation
+from ..types import (
+    LED,
+    Animation,
+    AnimationOrColor,
+    SceneContext,
+    TrackedPoint,
+    YamlValue,
+)
+
+type _Color = tuple[float, float, float, float, float]
+type SpeedMode = Literal["speed up", "slow down"]
+"""The direction of the time change of `proximity_speed`."""
+
+type _SpeedKey = tuple[tuple[float, float], SpeedMode, float, float, float, float]
+
+
+def _off(
+    _time: float,
+    _ctx: SceneContext,
+    _led: LED,
+    _objects: Sequence[TrackedPoint],
+) -> RGBCCT:
+    return RGBCCT()
 
 
 def alternate(
-    *animations: Animation | RGBCCT,
+    *animations: AnimationOrColor,
     length: float = 10,
 ) -> Animation:
+    """Show each animation in turn.
+
+    Args:
+        *animations: The animations in the order to show them.
+        length: The time for each animation in seconds.
+
+    Returns:
+        The animation. With no animations, all LEDs are off.
+    """
     if len(animations) == 0:
-        return lambda *args, **kwargs: RGBCCT()
+        return _off
 
     def animation(
         time: float,
-        _ctx: SceneContext,
+        ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *_args,
-        **_kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        return (
-            anim
-            if isinstance(
-                (anim := animations[int(time / length) % len(animations)]), RGBCCT
-            )
-            else anim(time, _ctx, led, objects)
-        )
+        anim = animations[int(time / length) % len(animations)]
+        return anim if isinstance(anim, RGBCCT) else anim(time, ctx, led, objects)
 
     return animation
 
 
 def blend(
-    *animations: Animation | RGBCCT, mode: Literal["average", "max"] = "average"
+    *animations: AnimationOrColor, mode: Literal["average", "max"] = "average"
 ) -> Animation:
+    """Mix the colors of animations channel by channel.
+
+    Args:
+        *animations: The animations to mix.
+        mode: ``"average"`` uses the mean of each channel. ``"max"`` uses the
+            highest value of each channel.
+
+    Returns:
+        The animation. With no animations, all LEDs are off.
+    """
+
     def animation(
         time: float,
-        _ctx: SceneContext,
+        ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *_args,
-        **_kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         colors_list = [
-            anim if isinstance(anim, RGBCCT) else anim(time, _ctx, led, objects)
+            anim if isinstance(anim, RGBCCT) else anim(time, ctx, led, objects)
             for anim in animations
         ]
 
@@ -62,7 +92,7 @@ def blend(
         tuples = (
             (color.r, color.g, color.b, color.cw, color.ww) for color in colors_list
         )
-        zipped = zip(*tuples)
+        zipped = zip(*tuples, strict=True)
 
         if mode == "max":
             result = tuple(max(values) for values in zipped)
@@ -75,37 +105,42 @@ def blend(
 
 
 def schedule(
-    primary: Animation | RGBCCT,
-    secondary: Animation | RGBCCT,
+    primary: AnimationOrColor,
+    secondary: AnimationOrColor,
     start: str = "18:00",
     end: str = "06:00",
 ) -> Animation:
-    """
-    Activates the primary animation only between specific hours.
-    Otherwise returns secondary animation.
+    """Show ``primary`` between two times of the day, else ``secondary``.
+
+    The time range can go past midnight.
+
+    Args:
+        primary: The animation inside the time range.
+        secondary: The animation outside the time range.
+        start: The start time as ``HH:MM``.
+        end: The end time as ``HH:MM``.
+
+    Returns:
+        The animation. An invalid time gives the range 18:00 to 06:00.
     """
 
     def animation(
         time: float,
         ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *args,
-        **kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         now = datetime.datetime.now().time()
         try:
             start_t = datetime.time.fromisoformat(start)
             end_t = datetime.time.fromisoformat(end)
         except ValueError:
-            # Fallback if time format is invalid
             start_t = datetime.time(18, 0)
             end_t = datetime.time(6, 0)
 
-        is_active = False
         if start_t <= end_t:
             is_active = start_t <= now <= end_t
-        else:  # crosses midnight
+        else:
             is_active = now >= start_t or now <= end_t
 
         target = primary if is_active else secondary
@@ -113,54 +148,52 @@ def schedule(
         if isinstance(target, RGBCCT):
             return target
 
-        return target(time, ctx, led, objects, *args, **kwargs)
+        return target(time, ctx, led, objects)
 
     return animation
 
 
 def smooth(
-    animation: Animation | RGBCCT,
+    animation: AnimationOrColor,
     smoothing: float = 0.5,
 ) -> Animation:
+    """Smooth an animation over time with an exponential moving average.
+
+    Args:
+        animation: The animation to smooth.
+        smoothing: The weight of the previous color, from 0 to 1. 0 gives
+            no smoothing. 1 keeps the first color forever.
+
+    Returns:
+        The animation.
     """
-    Smooths the input animation over time using an exponential moving average.
-    smoothing: 0.0 = no smoothing (instant), 1.0 = infinite smoothing (no change).
-    """
-    # Store state as floats to prevent quantization artifacts
-    last_colors: Dict[int, tuple] = {}
+    # Keep the state as floats. Integer channels would lose small steps.
+    last_colors: dict[int, _Color] = {}
 
     def func(
         time: float,
         ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *args,
-        **kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        nonlocal last_colors
-
-        target: RGBCCT
-        if isinstance(animation, RGBCCT):
-            target = animation
-        else:
-            target = animation(time, ctx, led, objects, *args, **kwargs)
+        target = (
+            animation
+            if isinstance(animation, RGBCCT)
+            else animation(time, ctx, led, objects)
+        )
 
         current = last_colors.get(led.index)
 
         if current is None:
-            # First frame, jump to target
-            current = (
+            last_colors[led.index] = (
                 float(target.r),
                 float(target.g),
                 float(target.b),
                 float(target.cw),
                 float(target.ww),
             )
-            last_colors[led.index] = current
             return target
 
-        # Interpolate using floats
-        # next = current * smoothing + target * (1 - smoothing)
         weight = 1.0 - smoothing
         next_r = current[0] * smoothing + target.r * weight
         next_g = current[1] * smoothing + target.g * weight
@@ -185,67 +218,71 @@ def persist(
     animation: Animation,
     duration: float = 2.0,
 ) -> Animation:
+    """Keep persons alive for a sub-animation after they disappear.
+
+    Args:
+        animation: The sub-animation.
+        duration: The maximum time to keep a person in seconds.
+
+    Returns:
+        The animation.
     """
-    Keeps objects "alive" for the sub-animation for a few seconds
-    after they are no longer detected.
-    """
-    # {object_id: (Point, last_seen_time)}
-    persisted_objects: Dict[int, Tuple[TrackedPoint, float]] = {}
+    persisted_objects: dict[int, tuple[TrackedPoint, float]] = {}
     last_frame_time = -1.0
 
     def func(
         time: float,
         ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *args,
-        **kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        nonlocal persisted_objects, last_frame_time
+        nonlocal last_frame_time
 
-        # --- This logic should only run once per frame ---
+        # The function runs once for each LED, but the time only changes
+        # between frames. Update the persons only on the first call of a frame.
         if time > last_frame_time:
-            # Update last_seen_time for currently visible objects
-            # Note: We don't have a stable object ID from the Xovis data,
-            # so we'll use the Point's hash as a pseudo-ID. This is not
-            # perfect but works for transient objects.
+            # The key is the hash of the position, not the track ID. A moving
+            # person gets a new key in each frame, so stale keys expire fast.
             current_ids = {hash(o.tuple) for o in objects}
             for obj in objects:
                 persisted_objects[hash(obj.tuple)] = (obj, time)
 
-            # Prune old objects
-            expired_ids = []
-            for obj_id, (point, last_seen) in persisted_objects.items():
-                if time - last_seen > duration:
-                    expired_ids.append(obj_id)
-                # Also prune if a "current" object is no longer detected
-                elif obj_id not in current_ids and time - last_seen > 0.1:
+            expired_ids: list[int] = []
+            for obj_id, (_point, last_seen) in persisted_objects.items():
+                if time - last_seen > duration or (
+                    obj_id not in current_ids and time - last_seen > 0.1
+                ):
                     expired_ids.append(obj_id)
 
             for obj_id in expired_ids:
-                if obj_id in persisted_objects:
-                    del persisted_objects[obj_id]
+                persisted_objects.pop(obj_id, None)
 
             last_frame_time = time
-        # --- End of per-frame logic ---
 
-        # Pass the combined list of current and persisted objects to the sub-animation
-        all_objects = [p for p, t in persisted_objects.values()]
-        return animation(time, ctx, led, all_objects, *args, **kwargs)
+        all_objects = [p for p, _t in persisted_objects.values()]
+        return animation(time, ctx, led, all_objects)
 
     return func
 
 
 def proximity(
-    primary: Animation | RGBCCT,
-    secondary: Animation | RGBCCT,
+    primary: AnimationOrColor,
+    secondary: AnimationOrColor,
     x: float = 0.0,
     y: float = 0.0,
     radius: float = 200.0,
 ) -> Animation:
-    """
-    Blends between primary and secondary based on the closest object's
-    distance to a target point.
+    """Fade between two animations from the distance of a person to a point.
+
+    Args:
+        primary: The animation when a person is at the point.
+        secondary: The animation when nobody is in the radius.
+        x: The x coordinate of the point.
+        y: The y coordinate of the point.
+        radius: The distance where ``secondary`` starts.
+
+    Returns:
+        The animation.
     """
     target_point = TrackedPoint(x=x, y=y)
 
@@ -253,37 +290,27 @@ def proximity(
         time: float,
         ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *args,
-        **kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        # Evaluate the base colors from the animations for this LED
         primary_color = (
-            primary
-            if isinstance(primary, RGBCCT)
-            else primary(time, ctx, led, objects, *args, **kwargs)
+            primary if isinstance(primary, RGBCCT) else primary(time, ctx, led, objects)
         )
         secondary_color = (
             secondary
             if isinstance(secondary, RGBCCT)
-            else secondary(time, ctx, led, objects, *args, **kwargs)
+            else secondary(time, ctx, led, objects)
         )
 
         object_list = list(objects)
         if not object_list:
             return secondary_color
 
-        # Find the distance of the closest object to the target point
         min_dist = min((obj - target_point).length for obj in object_list)
 
-        # Calculate intensity (0 to 1)
         intensity = 1.0 - (min_dist / radius)
-        if intensity < 0:
-            intensity = 0
-        if intensity > 1:
-            intensity = 1
+        intensity = max(intensity, 0)
+        intensity = min(intensity, 1)
 
-        # Interpolate between secondary (intensity 0) and primary (intensity 1)
         return interpolate_rgbcct(
             primary_color, secondary_color, intensity, use_sign=False
         )
@@ -291,52 +318,46 @@ def proximity(
     return animation
 
 
-last_time: Dict[
-    Tuple[
-        Tuple[float, float],
-        Literal["speed up", "slow down"],
-        float,
-        float,
-        float,
-        float,
-    ],
-    float,
-] = {}
-real_last_time: Dict[
-    Tuple[
-        Tuple[float, float],
-        Literal["speed up", "slow down"],
-        float,
-        float,
-        float,
-        float,
-    ],
-    float,
-] = {}
+# The animation time of each proximity_speed instance. The key holds the
+# parameters, so two instances with the same parameters share the state.
+last_time: dict[_SpeedKey, float] = {}
+real_last_time: dict[_SpeedKey, float] = {}
 
 
 def proximity_speed(
-    animation: Animation | RGBCCT,
+    animation: AnimationOrColor,
     x: float = 0.0,
     y: float = 0.0,
     radius: float = 200.0,
     multiplier: float = 1.0,
-    mode: Literal["speed up", "slow down"] = "speed up",
+    mode: SpeedMode = "speed up",
     proximity_factor: float = 0.5,
 ) -> Animation:
-    """
-    Increases the speed of the animation based on the distance to the target point.
-    """
+    """Change the speed of an animation from the distance of a person to a point.
 
+    Args:
+        animation: The animation to change.
+        x: The x coordinate of the point.
+        y: The y coordinate of the point.
+        radius: The distance where the speed change starts.
+        multiplier: The speed factor for all frames.
+        mode: Make the animation faster or slower near the point.
+        proximity_factor: The strength of the change, from 0 to 1.
+
+    Returns:
+        The animation.
+
+    Raises:
+        ValueError: If ``mode`` is not valid. The animation raises it on the
+            first frame with a person.
+    """
     target_point = TrackedPoint(x=x, y=y)
 
     def _animation(
         time: float,
         ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *args,
-        **kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         key = (target_point.tuple, mode, x, y, radius, multiplier)
 
@@ -352,18 +373,14 @@ def proximity_speed(
             return (
                 animation
                 if isinstance(animation, RGBCCT)
-                else animation(last_time[key], ctx, led, objects, *args, **kwargs)
+                else animation(last_time[key], ctx, led, objects)
             )
 
-        # Find the distance of the closest object to the target point
         min_dist = min((obj - target_point).length for obj in object_list)
 
-        # Calculate intensity (0 to 1)
         intensity = (1.0 - (min_dist / radius)) * max(min(proximity_factor, 1), 0)
-        if intensity < 0:
-            intensity = 0
-        if intensity > 1:
-            intensity = 1
+        intensity = max(intensity, 0)
+        intensity = min(intensity, 1)
 
         t_diff = time - real_last_time[key]
         real_last_time[key] = time
@@ -373,20 +390,31 @@ def proximity_speed(
         elif mode == "slow down":
             last_time[key] = last_time[key] + t_diff / (1 + intensity) * multiplier
         else:
-            raise ValueError("Invalid mode")
+            msg = "Invalid mode"
+            raise ValueError(msg)
 
-        # Interpolate between secondary (intensity 0) and primary (intensity 1)
         return (
             animation
             if isinstance(animation, RGBCCT)
-            else animation(last_time[key], ctx, led, objects, *args, **kwargs)
+            else animation(last_time[key], ctx, led, objects)
         )
 
     return _animation
 
 
-def preset(name: str, visited_presets: Optional[Set[str]] = None) -> Animation | RGBCCT:
-    from ..config import ANIMATION_FUNCTIONS
+def preset(name: str, visited_presets: set[str] | None = None) -> AnimationOrColor:
+    """Load the animation of a preset file.
+
+    Args:
+        name: The name of the preset.
+        visited_presets: The names of the presets that enclose this one.
+
+    Returns:
+        The animation of the preset. A missing, empty or recursive preset
+        turns all LEDs off.
+    """
+    # gangway.config imports this module, so import it at call time.
+    from ..config import ANIMATION_FUNCTIONS, CONFIG  # noqa: PLC0415
 
     if visited_presets is None:
         visited_presets = set()
@@ -397,62 +425,86 @@ def preset(name: str, visited_presets: Optional[Set[str]] = None) -> Animation |
     new_visited = visited_presets.copy()
     new_visited.add(name)
 
-    presets_dir = Path(__file__).parent.parent.parent / "presets"
-    preset_path = presets_dir / f"{name}.yaml"
+    # The API and MQTT keep the presets next to the config file. On the Pi
+    # that is the state directory, not the read-only source tree.
+    preset_path = CONFIG.path.parent / "presets" / f"{name}.yaml"
 
     if not preset_path.exists():
         return RGBCCT()
 
-    with open(preset_path, "r") as f:
-        anim_config = yaml.safe_load(f)
+    with open(preset_path) as f:
+        anim_config: YamlValue = yaml.safe_load(f)
 
     if anim_config is None:
         return RGBCCT()
 
-    return parse_animation(
-        anim_config, ANIMATION_FUNCTIONS, visited_presets=new_visited
+    return as_animation(
+        parse_animation(anim_config, ANIMATION_FUNCTIONS, visited_presets=new_visited)
     )
 
 
 def day_of_week(
-    monday: Animation | RGBCCT = RGBCCT(),
-    tuesday: Animation | RGBCCT = RGBCCT(),
-    wednesday: Animation | RGBCCT = RGBCCT(),
-    thursday: Animation | RGBCCT = RGBCCT(),
-    friday: Animation | RGBCCT = RGBCCT(),
-    saturday: Animation | RGBCCT = RGBCCT(),
-    sunday: Animation | RGBCCT = RGBCCT(),
+    monday: AnimationOrColor = RGBCCT(),
+    tuesday: AnimationOrColor = RGBCCT(),
+    wednesday: AnimationOrColor = RGBCCT(),
+    thursday: AnimationOrColor = RGBCCT(),
+    friday: AnimationOrColor = RGBCCT(),
+    saturday: AnimationOrColor = RGBCCT(),
+    sunday: AnimationOrColor = RGBCCT(),
 ) -> Animation:
+    """Show a different animation on each day of the week.
+
+    Args:
+        monday: The animation on Monday.
+        tuesday: The animation on Tuesday.
+        wednesday: The animation on Wednesday.
+        thursday: The animation on Thursday.
+        friday: The animation on Friday.
+        saturday: The animation on Saturday.
+        sunday: The animation on Sunday.
+
+    Returns:
+        The animation.
+    """
     days = [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
 
     def animation(
         time: float,
         ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *args,
-        **kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        # 0 = Monday, 6 = Sunday
         weekday = datetime.datetime.now().weekday()
         anim = days[weekday]
 
         if isinstance(anim, RGBCCT):
             return anim
-        return anim(time, ctx, led, objects, *args, **kwargs)
+        return anim(time, ctx, led, objects)
 
     return animation
 
 
 def exponential_at(
-    primary: RGBCCT | Animation = RGBCCT(r=255),
-    secondary: RGBCCT | Animation = RGBCCT(g=255),
+    primary: AnimationOrColor = RGBCCT(r=255),
+    secondary: AnimationOrColor = RGBCCT(g=255),
     x: float = 0.0,
     y: float = 0.0,
     radius: float = 150,
 ) -> Animation:
-    """
-    Like exponential, but based on a fixed point instead of objects.
+    """Fade from ``secondary`` to ``primary`` near a fixed point.
+
+    This is like `gangway.animations.responsive.exponential`, but the
+    distance is to a fixed point, not to the persons.
+
+    Args:
+        primary: The animation at the point.
+        secondary: The animation far from the point.
+        x: The x coordinate of the point.
+        y: The y coordinate of the point.
+        radius: The distance that halves the weight of ``primary``.
+
+    Returns:
+        The animation.
     """
     target_point = TrackedPoint(x=x, y=y)
 
@@ -460,21 +512,17 @@ def exponential_at(
         time: float,
         ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *args,
-        **kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
         intensity = 2 ** (-(led.p - target_point).length / radius)
 
         primary_color = (
-            primary
-            if isinstance(primary, RGBCCT)
-            else primary(time, ctx, led, objects, *args, **kwargs)
+            primary if isinstance(primary, RGBCCT) else primary(time, ctx, led, objects)
         )
         secondary_color = (
             secondary
             if isinstance(secondary, RGBCCT)
-            else secondary(time, ctx, led, objects, *args, **kwargs)
+            else secondary(time, ctx, led, objects)
         )
 
         return interpolate_rgbcct(
@@ -486,68 +534,82 @@ def exponential_at(
 
 def strip_assignment(
     strip: int,
-    animation: Animation | RGBCCT,
-) -> Tuple[int, Animation | RGBCCT]:
+    animation: AnimationOrColor,
+) -> tuple[int, AnimationOrColor]:
+    """Assign an animation to a strip segment for `by_strip`.
+
+    Args:
+        strip: The position of the strip segment in the config.
+        animation: The animation for the strip segment.
+
+    Returns:
+        The assignment.
+    """
     return strip, animation
 
 
 def by_strip(
-    assignments: Iterable[Tuple[int, Animation | RGBCCT]] | None = None,
-    default: Animation | RGBCCT = RGBCCT(),
+    assignments: Iterable[tuple[int, AnimationOrColor]] | None = None,
+    default: AnimationOrColor = RGBCCT(),
 ) -> Animation:
-    if assignments is None:
-        mapping = {}
-    else:
-        mapping = dict(assignments)
+    """Show a different animation on each strip segment.
+
+    Args:
+        assignments: The animation for each strip segment, from
+            `strip_assignment`.
+        default: The animation for the strip segments with no assignment.
+
+    Returns:
+        The animation.
+    """
+    mapping = {} if assignments is None else dict(assignments)
 
     def animation(
         time: float,
         ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *args,
-        **kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        idx = getattr(led, "strip_index", -1)
-        anim = mapping.get(idx, default)
+        anim = mapping.get(led.strip_index, default)
 
         if isinstance(anim, RGBCCT):
             return anim
-        return anim(time, ctx, led, objects, *args, **kwargs)
+        return anim(time, ctx, led, objects)
 
     return animation
 
 
-def extrapolate(animation: Animation | RGBCCT, latency: float = 0.0) -> Animation:
-    last_object_state: Dict[int, Tuple[TrackedPoint, float]] = {}
-    object_velocities: Dict[int, TrackedPoint] = {}
-    last_processed_instance: Dict[int, int] = {}
+def extrapolate(animation: AnimationOrColor, latency: float = 0.0) -> Animation:
+    """Move each person along its velocity to hide the sensor latency.
+
+    Args:
+        animation: The sub-animation that gets the moved persons.
+        latency: The time to look ahead in seconds.
+
+    Returns:
+        The animation.
+    """
+    last_object_state: dict[int, tuple[TrackedPoint, float]] = {}
+    object_velocities: dict[int, TrackedPoint] = {}
+    last_processed_instance: dict[int, int] = {}
 
     def func(
         time: float,
         ctx: SceneContext,
         led: LED,
-        objects: Iterable[TrackedPoint],
-        *args,
-        **kwargs,
+        objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        nonlocal last_object_state, object_velocities, last_processed_instance
-
         current_objects = list(objects)
-        predicted_objects = []
-        current_ids = set()
+        predicted_objects: list[TrackedPoint] = []
+        current_ids: set[int] = set()
 
         for obj in current_objects:
             obj_id = obj.id
-
-            if obj_id is None:
-                predicted_objects.append(obj)
-                continue
-
             current_ids.add(obj_id)
-            pid = id(obj)
 
-            # Check if new measurement
+            # The sensor receiver makes new point objects for each
+            # measurement. The same object means the same measurement.
+            pid = id(obj)
             if last_processed_instance.get(obj_id) != pid:
                 obj_time = obj.timestamp
                 prev_pos, prev_time = last_object_state.get(obj_id, (obj, obj_time))
@@ -562,28 +624,21 @@ def extrapolate(animation: Animation | RGBCCT, latency: float = 0.0) -> Animatio
                 last_object_state[obj_id] = (obj, obj_time)
                 last_processed_instance[obj_id] = pid
 
-            # Extrapolate
             vel = object_velocities.get(obj_id, TrackedPoint(0, 0))
+            # Point subtraction is reversed (other - self), so a negative
+            # factor moves the point forward along the velocity.
             predicted = obj + vel * latency * (-1)
+            predicted_objects.append(TrackedPoint(predicted.x, predicted.y, id=obj.id))
 
-            if isinstance(obj, TrackedPoint):
-                predicted = TrackedPoint(predicted.x, predicted.y, id=obj.id)
-
-            predicted_objects.append(predicted)
-
-        # Prune old IDs
-        keys = list(last_object_state.keys())
-        for k in keys:
+        for k in list(last_object_state.keys()):
             if k not in current_ids:
                 del last_object_state[k]
-                if k in object_velocities:
-                    del object_velocities[k]
-                if k in last_processed_instance:
-                    del last_processed_instance[k]
+                object_velocities.pop(k, None)
+                last_processed_instance.pop(k, None)
 
         if isinstance(animation, RGBCCT):
             return animation
 
-        return animation(time, ctx, led, predicted_objects, *args, **kwargs)
+        return animation(time, ctx, led, predicted_objects)
 
     return func

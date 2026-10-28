@@ -21,11 +21,8 @@
     the Pi itself keeps using systemd-resolved
   - `networking.nat` — masquerades eth0 out through wlan0, so the sensor
     reaches the internet
-  - `networking.firewall` — SSH and HTTP from anywhere. eth0 and the two
-    WireGuard tunnels are trusted, so the sensor push on 8081 and the API
-    on 8082 answer there only. `checkReversePath` is loose: the old install
-    had to turn rp_filter off for the beimgraben.net tunnel, and a strict
-    check drops the same packets
+  - `networking.firewall` — SSH and HTTP from anywhere. eth0 is trusted,
+    so the sensor push on 8081 and the API on 8082 answer there only
   - `systemd.network.wait-online.enable` — off. Nothing on the box needs the
     uplink to boot
 */
@@ -95,12 +92,7 @@
           22
           80
         ];
-        trustedInterfaces = [
-          "eth0"
-          "vpn.stupa"
-          "beimgraben.net"
-        ];
-        checkReversePath = "loose";
+        trustedInterfaces = [ "eth0" ];
       };
     };
 }

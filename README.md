@@ -112,7 +112,7 @@ support comes from [nixos-raspberrypi](https://github.com/nvmd/nixos-raspberrypi
 |------|---------|
 | `flake.nix` | The inputs. All outputs come from `modules/`. |
 | `modules/hosts/gangway.nix` | The host `gangway` and its SD image. |
-| `modules/nixos/` | The system modules: network, WireGuard, services, app. |
+| `modules/nixos/` | The system modules: network, services, app. |
 | `nix/` | The packages: backend, web UI and LED driver. |
 | `secrets/gangway.yaml` | The secrets, encrypted with sops. |
 
@@ -125,15 +125,13 @@ and SSH key, so `ssh fsi@gangway.local` also works.
 |-----------|---------|----------|
 | `eth0` | 10.0.0.1/24 | Private LAN for the Xovis sensor. dnsmasq gives DHCP leases from 10.0.0.2 to 10.0.0.254. |
 | `wlan0` | DHCP | Uplink over "Iphone Hotspot" or "freeCampus". The Pi masquerades the sensor LAN through this link. |
-| `beimgraben.net` | 10.66.66.200/24 | WireGuard tunnel to beimgraben.net. |
-| `vpn.stupa` | 10.0.2.3/32 | WireGuard tunnel to vpn.reutlingen.university. |
 
 | Port | Service | Reachable from |
 |------|---------|----------------|
 | 22 | SSH, key only | All interfaces |
 | 80 | nginx: web UI, `/api/` and `/live` | All interfaces |
-| 8081 | Xovis receiver | `eth0` and the tunnels |
-| 8082 | API | `eth0` and the tunnels |
+| 8081 | Xovis receiver | `eth0` |
+| 8082 | API | `eth0` |
 
 Set the push target of the Xovis sensor to `http://10.0.0.1:8081/`. The
 receiver accepts bodies with `Content-Length` and chunked bodies.
@@ -150,8 +148,8 @@ Two presets on the old card were corrupted and are lost: "Off-at-Night" and
 
 ### Secrets
 
-`secrets/gangway.yaml` holds the WiFi passwords, the WireGuard keys and the
-`API_KEY` of the web UI. sops encrypts the file for two recipients, see
+`secrets/gangway.yaml` holds the WiFi passwords and the `API_KEY` of the web
+UI. sops encrypts the file for two recipients, see
 `.sops.yaml`:
 
 - The GPG key of the admin. Use it to edit the file.
@@ -174,7 +172,7 @@ If the Pi gets a new SSH host key, do these steps:
 
 The SD image contains no secrets and no SSH host key. You must copy the host
 key onto the card before the first boot. If you do not do this, sops-nix
-cannot decrypt the secrets, and the Pi has no WiFi and no tunnels.
+cannot decrypt the secrets, and the Pi has no WiFi.
 
 1. Build the image: `nix build .#gangway.sd-image`.
 2. Find the device of the card with `lsblk`, for example `/dev/sdX`.

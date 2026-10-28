@@ -13,8 +13,7 @@
     the host from this file, so it must exist before the first boot. See the
     README for how it gets onto the card
   - `services.avahi` — publishes gangway.local, as the old install did
-  - `environment.systemPackages` — git, vim, wget, curl, tcpdump and
-    wireguard-tools
+  - `environment.systemPackages` — git, vim, wget, curl and tcpdump
 */
 { ... }:
 
@@ -52,7 +51,6 @@
         wget
         curl
         tcpdump
-        wireguard-tools
       ];
     };
 }

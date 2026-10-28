@@ -18,7 +18,6 @@
     secrets
     gangway-host
     gangway-networking
-    gangway-wireguard
     gangway-services
     gangway-app
   ];

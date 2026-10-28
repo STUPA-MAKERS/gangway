@@ -22,10 +22,10 @@
   - `networking.nat` — masquerades eth0 out through wlan0, so the sensor
     reaches the internet
   - `networking.firewall` — SSH and HTTP from anywhere. eth0 and the two
-    WireGuard tunnels are trusted, so the sensor push on 8081, the MQTT
-    broker on 1883 and the API ports answer there only. `checkReversePath`
-    is loose: the old install had to turn rp_filter off for the beimgraben.net
-    tunnel, and a strict check drops the same packets
+    WireGuard tunnels are trusted, so the sensor push on 8081 and the API
+    on 8082 answer there only. `checkReversePath` is loose: the old install
+    had to turn rp_filter off for the beimgraben.net tunnel, and a strict
+    check drops the same packets
   - `systemd.network.wait-online.enable` — off. Nothing on the box needs the
     uplink to boot
 */

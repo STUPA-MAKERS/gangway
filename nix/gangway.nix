@@ -6,18 +6,18 @@
   environment that holds the run-time dependencies.
 
   # Inputs
-  - `main.py`, `gangway/` and `config.yaml` — the only sources the fileset
-    selects, so a change to the frontend or a README does not rebuild the
-    backend
+  - `main.py`, `gangway/`, `config.yaml` and `presets/` — the only sources
+    the fileset selects, so a change to the frontend or a README does not
+    rebuild the backend
   - `rpi-ws2805` — the LED driver from ./rpi-ws2805.nix
 
   # Defines
   - `passthru.pythonDeps` — the run-time dependencies as a function of a
     Python package set, so the dev shell can add its tools to the same list
   - the `gangway` derivation — `bin/gangway` starts the LED controller, the
-    Xovis receiver on port 8081, the MQTT client and the API on port 8082.
-    `share/gangway/config.yaml` is the seed that the NixOS module copies into
-    the state directory on the first start
+    Xovis receiver on port 8081 and the API on port 8082.
+    `share/gangway/config.yaml` and `share/gangway/presets/` are the seed
+    that the NixOS module copies into the state directory
 */
 {
   lib,
@@ -30,7 +30,6 @@
 
 let
   pythonDeps = ps: [
-    ps.aiomqtt
     ps.fastapi
     ps.numpy
     ps.opencv4
@@ -54,6 +53,7 @@ stdenvNoCC.mkDerivation {
     fileset = lib.fileset.unions [
       ../main.py
       ../config.yaml
+      (lib.fileset.fileFilter (file: file.hasExt "yaml") ../presets)
       (lib.fileset.fileFilter (file: file.hasExt "py") ../gangway)
     ];
   };
@@ -64,7 +64,7 @@ stdenvNoCC.mkDerivation {
     runHook preInstall
 
     mkdir -p $out/share/gangway
-    cp -r main.py config.yaml gangway $out/share/gangway/
+    cp -r main.py config.yaml presets gangway $out/share/gangway/
 
     makeWrapper ${pythonEnv}/bin/python3 $out/bin/gangway \
       --add-flags $out/share/gangway/main.py \

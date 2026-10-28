@@ -9,10 +9,12 @@
   - `services.gangway` — `enable`, `package`, `frontendPackage` and
     `stateDir`
   - `systemd.services.gangway` — the LED controller, the Xovis receiver on
-    8081, the MQTT client and the API on 8082. It runs as root, because the
-    WS2805 driver maps /dev/mem to drive PWM0 through DMA. `preStart` copies
-    the packaged config.yaml into the state directory once, and never
-    overwrites it after that. `GANGWAY_CONFIG` points the app at that copy.
+    8081 and the API on 8082. It runs as root, because the WS2805 driver
+    maps /dev/mem to drive PWM0 through DMA. `preStart` copies the packaged
+    config.yaml and each packaged preset into the state directory if it is
+    not there yet. It never overwrites a file, so the changes from the web
+    UI stay. `cp --update=none` skips with exit code 0, where `cp -n` fails
+    on newer coreutils. `GANGWAY_CONFIG` points the app at that copy.
     The `gangway-env` secret holds `API_KEY=…`, the key the web UI asks for
   - `systemd.services.gangway-frontend` — `next start` on 127.0.0.1:8083, as
     a dynamic user with no write access, because the UI keeps no state
@@ -67,16 +69,14 @@
         systemd.services.gangway = {
           description = "Gangway LED controller";
           wantedBy = [ "multi-user.target" ];
-          after = [
-            "network.target"
-            "mosquitto.service"
-          ];
+          after = [ "network.target" ];
           environment.GANGWAY_CONFIG = "${cfg.stateDir}/config.yaml";
           preStart = ''
             if [ ! -e ${cfg.stateDir}/config.yaml ]; then
               install -m 644 ${cfg.package}/share/gangway/config.yaml ${cfg.stateDir}/config.yaml
             fi
             mkdir -p ${cfg.stateDir}/presets
+            cp --update=none --no-preserve=mode ${cfg.package}/share/gangway/presets/*.yaml ${cfg.stateDir}/presets/
           '';
           serviceConfig = {
             ExecStart = lib.getExe cfg.package;

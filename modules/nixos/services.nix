@@ -1,5 +1,5 @@
 /**
-  nginx in front of the app, and the MQTT broker.
+  nginx in front of the app.
 
   # Defines
   - `services.nginx.virtualHosts.gangway` — the default server on port 80,
@@ -9,9 +9,6 @@
     - `/live` goes to the live scene of the Xovis sensor at 10.0.0.2, with
       the sensor's HTTP basic credentials. The backend reads the camera
       image for the homography view from here
-  - `services.mosquitto` — one anonymous listener on 1883 that may read and
-    write every topic, as `/etc/mosquitto/conf.d/external.conf` on the old
-    install. The firewall opens 1883 only on the trusted interfaces
 */
 { ... }:
 
@@ -36,18 +33,6 @@
             };
           };
         };
-      };
-
-      services.mosquitto = {
-        enable = true;
-        listeners = [
-          {
-            port = 1883;
-            omitPasswordAuth = true;
-            settings.allow_anonymous = true;
-            acl = [ "topic readwrite #" ];
-          }
-        ];
       };
     };
 }

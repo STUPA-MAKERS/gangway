@@ -6,7 +6,7 @@ import pytest
 from rpi_ws2805 import RGBCCT
 
 from gangway.animations.meta import preset
-from gangway.config import CONFIG
+from gangway.config import CONFIG, GANGWAYConfig
 
 BLUE_PRESET_YAML = """
 r: 0
@@ -37,3 +37,12 @@ def test_missing_preset_turns_leds_off(state_dir: Path) -> None:
     assert not (state_dir / "presets" / "Missing.yaml").exists()
 
     assert preset("Missing") == RGBCCT()
+
+
+def test_config_with_preset_animation_loads(state_dir: Path) -> None:
+    """Load a config whose animation is a preset from the state directory."""
+    (state_dir / "presets" / "Blue.yaml").write_text(BLUE_PRESET_YAML)
+    config_path = state_dir / "config.yaml"
+    config_path.write_text("strips: []\nanimation:\n  preset:\n    name: Blue\n")
+
+    assert RGBCCT(b=255) == GANGWAYConfig(config_path).ANIMATION

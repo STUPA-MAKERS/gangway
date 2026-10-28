@@ -60,24 +60,6 @@ class StripConfig(TypedDict):
     end: list[float]
 
 
-class MqttConfig(TypedDict, total=False):
-    """The ``mqtt`` section of the config file.
-
-    Attributes:
-        host: The host name of the broker.
-        port: The port of the broker.
-        username: The user name for the broker.
-        password: The password for the broker.
-        topic_prefix: The prefix of all topics.
-    """
-
-    host: str
-    port: int
-    username: str | None
-    password: str | None
-    topic_prefix: str
-
-
 class ConfigFile(TypedDict, total=False):
     """The structure of the config file.
 
@@ -86,14 +68,12 @@ class ConfigFile(TypedDict, total=False):
         leds: The global LED settings.
         strips: The LED strip segments.
         animation: The config of the active animation.
-        mqtt: The MQTT broker settings.
     """
 
     projection: ProjectionConfig
     leds: LedsConfig
     strips: list[StripConfig]
     animation: YamlValue
-    mqtt: MqttConfig
 
 
 def _get_animation_functions() -> dict[str, AnimationFactory]:
@@ -128,11 +108,6 @@ class GANGWAYConfig:
         OFFSET_Y: The y offset for all strips.
         LEDS: All LEDs with their floor positions.
         ANIMATION: The active animation.
-        MQTT_HOST: The host name of the MQTT broker.
-        MQTT_PORT: The port of the MQTT broker.
-        MQTT_USERNAME: The user name for the MQTT broker.
-        MQTT_PASSWORD: The password for the MQTT broker.
-        MQTT_TOPIC_PREFIX: The prefix of all MQTT topics.
     """
 
     path: Path
@@ -147,21 +122,18 @@ class GANGWAYConfig:
     OFFSET_Y: float
     LEDS: list[LED]
     ANIMATION: AnimationOrColor
-    MQTT_HOST: str
-    MQTT_PORT: int
-    MQTT_USERNAME: str | None
-    MQTT_PASSWORD: str | None
-    MQTT_TOPIC_PREFIX: str
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, load: bool = True) -> None:
         """Load the config file.
 
         Args:
             path: The path of the config file.
+            load: Whether to read the file now. If false, call `load` later.
         """
         self._lock = threading.Lock()
         self.path = path
-        self.load()
+        if load:
+            self.load()
 
     def load(self) -> None:
         """Read the config file again and update all attributes.
@@ -217,13 +189,6 @@ class GANGWAYConfig:
                 parse_animation(config.get("animation", {}), ANIMATION_FUNCTIONS)
             )
 
-            mqtt_config = config.get("mqtt", {})
-            self.MQTT_HOST = mqtt_config.get("host", "localhost")
-            self.MQTT_PORT = mqtt_config.get("port", 1883)
-            self.MQTT_USERNAME = mqtt_config.get("username")
-            self.MQTT_PASSWORD = mqtt_config.get("password")
-            self.MQTT_TOPIC_PREFIX = mqtt_config.get("topic_prefix", "gangway")
-
     def save(self) -> None:
         """Write the config file again with its current content.
 
@@ -242,6 +207,13 @@ class GANGWAYConfig:
 # directory is next to it, and the modules that read presets resolve that path
 # at import time, so --config is too late for them.
 CONFIG = GANGWAYConfig(
-    Path(os.environ.get("GANGWAY_CONFIG", Path(__file__).parent.parent / "config.yaml"))
+    Path(
+        os.environ.get("GANGWAY_CONFIG", Path(__file__).parent.parent / "config.yaml")
+    ),
+    load=False,
 )
 """The global config instance."""
+
+# A `preset` animation reads CONFIG.path while the file loads, so the name
+# must be bound before the first load.
+CONFIG.load()

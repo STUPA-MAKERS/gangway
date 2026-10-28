@@ -132,7 +132,6 @@ and SSH key, so `ssh fsi@gangway.local` also works.
 |------|---------|----------------|
 | 22 | SSH, key only | All interfaces |
 | 80 | nginx: web UI, `/api/` and `/live` | All interfaces |
-| 1883 | MQTT broker, anonymous | `eth0` and the tunnels |
 | 8081 | Xovis receiver | `eth0` and the tunnels |
 | 8082 | API | `eth0` and the tunnels |
 
@@ -140,8 +139,14 @@ Set the push target of the Xovis sensor to `http://10.0.0.1:8081/`. The
 receiver accepts bodies with `Content-Length` and chunked bodies.
 
 The app keeps its run-time state in `/var/lib/gangway`: `config.yaml` and
-`presets/`. The first start copies the `config.yaml` of this repo into that
-directory. Later builds do not overwrite it.
+`presets/`. Each start copies the `config.yaml` and the presets of this repo
+into that directory, but only the files that are not there yet. The service
+never overwrites a file, so the changes from the web UI stay.
+
+The `config.yaml` and the presets in this repo come from the old SD card:
+the projection points, the cutout, the strip layout and the active animation.
+Two presets on the old card were corrupted and are lost: "Off-at-Night" and
+"Secret-Rave-Rainbow-Trails".
 
 ### Secrets
 

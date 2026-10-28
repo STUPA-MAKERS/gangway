@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Start the gangway LED controller.
 
-The program starts the LED render thread, the Xovis receiver on port 8081,
-the MQTT client and the API on port 8082. It runs until Ctrl+C.
+The program starts the LED render thread, the Xovis receiver on port 8081
+and the API on port 8082. It runs until Ctrl+C.
 """
 
 import argparse
@@ -16,7 +16,6 @@ from dotenv import load_dotenv
 from gangway import config
 from gangway.api import app
 from gangway.led_controller import LEDController
-from gangway.mqtt import MQTTHandler
 from gangway.state import STATE
 from gangway.types import TrackedPoint
 from gangway.xovis.server import XOVISServer
@@ -51,9 +50,6 @@ async def main() -> None:
 
     xovis_http_server = xovis_server.start_server()
 
-    mqtt_handler = MQTTHandler()
-    mqtt_task = asyncio.create_task(mqtt_handler.start())
-
     # Uvicorn owns the signal handling. On Ctrl+C it shuts down and serve()
     # returns, so the cleanup below always runs.
     config_uvicorn = uvicorn.Config(app, host="0.0.0.0", port=8082, log_level="info")
@@ -71,12 +67,6 @@ async def main() -> None:
             print("XOVIS callback handler stopped.")
         except Exception as e:
             print(f"Error stopping Xovis: {e}")
-
-        try:
-            mqtt_task.cancel()
-            print("MQTT Handler stopped.")
-        except Exception as e:
-            print(f"Error stopping MQTT Handler: {e}")
 
         try:
             led_controller.stop()

@@ -32,11 +32,6 @@ animation:
   b: 0
   ww: 0
   cw: 0
-
-mqtt:
-  host: "test.mosquitto.org"
-  port: 1883
-  topic_prefix: "test_gangway"
 """
 
 
@@ -71,9 +66,6 @@ def test_load_config(config_path: Path) -> None:
     assert cfg.LEDS[0].index == 0
 
     assert RGBCCT(r=255) == cfg.ANIMATION
-
-    assert cfg.MQTT_HOST == "test.mosquitto.org"
-    assert cfg.MQTT_TOPIC_PREFIX == "test_gangway"
 
 
 def test_save_config(config_path: Path) -> None:

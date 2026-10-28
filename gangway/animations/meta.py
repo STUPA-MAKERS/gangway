@@ -425,7 +425,7 @@ def preset(name: str, visited_presets: set[str] | None = None) -> AnimationOrCol
     new_visited = visited_presets.copy()
     new_visited.add(name)
 
-    # The API and MQTT keep the presets next to the config file. On the Pi
+    # The API keeps the presets next to the config file. On the Pi
     # that is the state directory, not the read-only source tree.
     preset_path = CONFIG.path.parent / "presets" / f"{name}.yaml"
 

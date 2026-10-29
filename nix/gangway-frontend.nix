@@ -1,72 +1,68 @@
 /**
-  The gangway web UI, a Next.js app packaged from `frontend/`.
+  The gangway web UI, an Angular single-page app packaged from `frontend/`.
 
   # Inputs
   - `frontend/` — the app and its package-lock.json. `npmDepsHash` pins the
     npm dependencies. Change it after every change to package-lock.json
-  - `inter` — the Inter font. `next/font/google` downloads the font at build
-    time, and the build sandbox has no network, so `app/layout.js` uses
-    `next/font/local`, and `preBuild` copies the font file into place
+  - `ui-kit` — the sources of @stupa-makers/ui-kit, the flake input `ui-kit`.
+    The tsconfig path of the app points into frontend/vendor/ui-kit, a git
+    submodule. A flake source does not hold the submodule, so `preBuild`
+    copies the input into its place. Keep the input on the commit of the
+    submodule
 
   # Defines
-  - the `gangway-frontend` derivation — `next build`, then the build output,
-    `public/` and the run-time `node_modules` in `lib/gangway-frontend`.
-    `bin/gangway-frontend` runs `next start` in that directory. It binds the
-    address in `GANGWAY_FRONTEND_HOST` and the port in
-    `GANGWAY_FRONTEND_PORT`, which default to 127.0.0.1 and 8083, because
-    nginx is the only client. The wrapper expands both at run time
+  - the `gangway-frontend` derivation — `ng build`, then the static files of
+    `dist/gangway/browser` at the top of `$out`. nginx serves them as `/`
+    (modules/nixos/services.nix). There is no server process
 */
 {
   lib,
   buildNpmPackage,
-  makeWrapper,
   nodejs,
-  inter,
+  ui-kit,
 }:
 
 buildNpmPackage {
   pname = "gangway-frontend";
-  version = "0.1.0";
+  version = "0.2.0";
 
   src = lib.fileset.toSource {
     root = ../frontend;
     fileset = lib.fileset.difference ../frontend (
-      lib.fileset.maybeMissing ../frontend/app/fonts/InterVariable.ttf
+      lib.fileset.unions [
+        (lib.fileset.maybeMissing ../frontend/node_modules)
+        (lib.fileset.maybeMissing ../frontend/dist)
+        (lib.fileset.maybeMissing ../frontend/.angular)
+        (lib.fileset.maybeMissing ../frontend/vendor)
+      ]
     );
   };
 
-  npmDepsHash = "sha256-le9vg0bF5uFRD5YxW7qbHiTqXg1xmK8AFdLOPAzEwOo=";
+  inherit nodejs;
+  npmDepsHash = "sha256-W+U1YKN1hRpqFUz7stEFQ6IDWYsGQTBEbOY1A3FeXcA=";
+  npmBuildScript = "build";
 
-  nativeBuildInputs = [ makeWrapper ];
-
-  env.NEXT_TELEMETRY_DISABLED = "1";
+  env = {
+    NG_CLI_ANALYTICS = "false";
+    CI = "true";
+  };
 
   preBuild = ''
-    mkdir -p app/fonts
-    cp ${inter}/share/fonts/truetype/InterVariable.ttf app/fonts/
+    mkdir -p vendor
+    cp -r ${ui-kit} vendor/ui-kit
+    chmod -R u+w vendor/ui-kit
   '';
 
   installPhase = ''
     runHook preInstall
-
-    mkdir -p $out/lib/gangway-frontend
-    cp -r .next public node_modules package.json next.config.js $out/lib/gangway-frontend/
-
-    makeWrapper ${lib.getExe nodejs} $out/bin/gangway-frontend \
-      --chdir $out/lib/gangway-frontend \
-      --set-default NODE_ENV production \
-      --set-default GANGWAY_FRONTEND_HOST 127.0.0.1 \
-      --set-default GANGWAY_FRONTEND_PORT 8083 \
-      --add-flags "$out/lib/gangway-frontend/node_modules/next/dist/bin/next start" \
-      --add-flags '-H "$GANGWAY_FRONTEND_HOST" -p "$GANGWAY_FRONTEND_PORT"'
-
+    mkdir -p $out
+    cp -r dist/gangway/browser/. $out/
     runHook postInstall
   '';
 
   meta = {
     description = "Web UI for the gangway LED controller";
-    mainProgram = "gangway-frontend";
     license = lib.licenses.gpl3Plus;
-    platforms = lib.platforms.linux;
+    platforms = lib.platforms.all;
   };
 }

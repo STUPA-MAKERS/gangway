@@ -1,24 +1,26 @@
 /**
   The gangway packages, and the shell to develop them in.
 
+  # Inputs
+  - `inputs.ui-kit` — the sources of @stupa-makers/ui-kit for the web UI
+
   # Defines
   - `perSystem.packages.gangway` — the backend, from `nix/gangway.nix`
-  - `perSystem.packages.gangway-frontend` — the web UI, from
-    `nix/gangway-frontend.nix`
+  - `perSystem.packages.gangway-frontend` — the static files of the web UI,
+    from `nix/gangway-frontend.nix`
   - `perSystem.packages.rpi-ws2805` — the LED driver, from
     `nix/rpi-ws2805.nix`
   - `perSystem.devShells.default` — the run-time Python dependencies of the
-    backend plus pytest and httpx, ruff and basedpyright, Node.js for the
-    frontend, and sops and ssh-to-age for secrets/.
+    backend plus pytest and httpx, ruff and basedpyright, Node.js and npm for
+    the frontend, and sops and ssh-to-age for secrets/.
 
     The shellHook builds a .venv that points at the dev environment. Editors
     then use the language servers from there in place of the ones they
     download, which are linked against a generic Linux and do not run on
     NixOS. The same .venv tells basedpyright which interpreter holds the
-    dependencies. The hook also copies the Inter font into
-    frontend/app/fonts, because `next dev` reads it from there
+    dependencies
 */
-{ ... }:
+{ inputs, ... }:
 
 {
   perSystem =
@@ -48,7 +50,9 @@
     {
       packages = {
         inherit gangway rpi-ws2805;
-        gangway-frontend = pkgs.callPackage ../../nix/gangway-frontend.nix { };
+        gangway-frontend = pkgs.callPackage ../../nix/gangway-frontend.nix {
+          inherit (inputs) ui-kit;
+        };
       };
 
       devShells.default = pkgs.mkShell {
@@ -71,10 +75,6 @@
           version = ${pkgs.python3.version}
           include-system-site-packages = false
           VENV
-
-          mkdir -p "$root/frontend/app/fonts"
-          install -m 644 ${pkgs.inter}/share/fonts/truetype/InterVariable.ttf \
-            "$root/frontend/app/fonts/InterVariable.ttf"
         '';
       };
     };

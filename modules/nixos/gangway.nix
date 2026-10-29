@@ -1,13 +1,17 @@
 /**
-  The gangway backend and the web UI, as two systemd services.
+  The gangway backend as a systemd service, and the package of the web UI.
 
   The backend and the UI both write their state at run time: the active
   animation goes into config.yaml, and the presets go into presets/ next to
   it. Both live in /var/lib/gangway, outside the Nix store.
 
+  # Inputs
+  - `inputs.ui-kit` — the sources of @stupa-makers/ui-kit for the web UI
+
   # Defines
   - `services.gangway` — `enable`, `package`, `frontendPackage` and
-    `stateDir`
+    `stateDir`. `frontendPackage` holds the static files of the web UI,
+    which nginx serves (modules/nixos/services.nix)
   - `systemd.services.gangway` — the LED controller, the Xovis receiver on
     8081 and the API on 8082. It runs as root, because the WS2805 driver
     maps /dev/mem to drive PWM0 through DMA. `preStart` copies the packaged
@@ -16,10 +20,8 @@
     UI stay. `cp --update=none` skips with exit code 0, where `cp -n` fails
     on newer coreutils. `GANGWAY_CONFIG` points the app at that copy.
     The `gangway-env` secret holds `API_KEY=…`, the key the web UI asks for
-  - `systemd.services.gangway-frontend` — `next start` on 127.0.0.1:8083, as
-    a dynamic user with no write access, because the UI keeps no state
 */
-{ ... }:
+{ inputs, ... }:
 
 {
   flake.modules.nixos.gangway-app =
@@ -47,9 +49,9 @@
 
         frontendPackage = lib.mkOption {
           type = lib.types.package;
-          default = pkgs.callPackage ../../nix/gangway-frontend.nix { };
-          defaultText = lib.literalExpression "pkgs.callPackage ../../nix/gangway-frontend.nix { }";
-          description = "The web UI package to run.";
+          default = pkgs.callPackage ../../nix/gangway-frontend.nix { inherit (inputs) ui-kit; };
+          defaultText = lib.literalExpression "pkgs.callPackage ../../nix/gangway-frontend.nix { inherit (inputs) ui-kit; }";
+          description = "The static files of the web UI, which nginx serves.";
         };
 
         stateDir = lib.mkOption {
@@ -83,18 +85,6 @@
             WorkingDirectory = cfg.stateDir;
             StateDirectory = lib.removePrefix "/var/lib/" cfg.stateDir;
             EnvironmentFile = config.sops.secrets.gangway-env.path;
-            Restart = "always";
-            RestartSec = 2;
-          };
-        };
-
-        systemd.services.gangway-frontend = {
-          description = "Gangway web UI";
-          wantedBy = [ "multi-user.target" ];
-          after = [ "network.target" ];
-          serviceConfig = {
-            ExecStart = lib.getExe cfg.frontendPackage;
-            DynamicUser = true;
             Restart = "always";
             RestartSec = 2;
           };

@@ -17,8 +17,12 @@ dist/
 /result-*
 .direnv/
 
-# Inter font, which the Nix build and `nix develop` copy in place
-/frontend/app/fonts/
+# Angular. frontend/.gitignore lists the same paths for a checkout of the
+# frontend alone
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.angular/
+/frontend/out-tsc/
 
 # Local password files, which belong in secrets/ through sops
 *.password

@@ -14,6 +14,10 @@
   - `sops-nix` — decrypts secrets/gangway.yaml on the Pi with its SSH host key
   - `import-tree` — imports every module under ./modules. It skips any path
     that holds `/_`, which is why the packages live in ./nix instead
+  - `ui-kit` — the sources of @stupa-makers/ui-kit for the web UI. The
+    frontend holds the kit as the submodule frontend/vendor/ui-kit, and a
+    flake source does not hold a submodule. Pin this input to the commit of
+    the submodule
 
   # Defines
   - `outputs` — flake-parts mkFlake over the modules tree
@@ -38,6 +42,11 @@
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    ui-kit = {
+      url = "github:STUPA-MAKERS/ui-kit/958d373a2a4ffb1f768ac30a8f40a463b0de9bcb";
+      flake = false;
     };
   };
 

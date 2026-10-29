@@ -27,7 +27,13 @@
     of the client, so the key stays necessary on the FRITZ!Box LAN
   - `systemd.services.gangway-nginx-api-key` — writes the snippet with the
     key from the `gangway-env` secret to /run/gangway-nginx, readable by
-    nginx only, so the key never goes into the Nix store. nginx includes
+    nginx only, so the key never goes into the Nix store. The secret can
+    give the value in quotes. systemd removes them for the backend, so the
+    unit removes one pair of matching quotes as well; else the header holds
+    the quotes, and the backend refuses the key.
+    nginx reads the snippet only when it starts or reloads, so the unit
+    reloads a running nginx after it writes a new snippet. `--no-block`
+    keeps the reload from waiting on a switch that runs this unit nginx includes
     the snippet with a glob, because a glob that matches no file is valid:
     the check of the nginx config at build time then passes, and nginx
     still starts if the snippet is missing. The unit escapes the key for an
@@ -107,6 +113,10 @@
         };
         script = ''
           key=$(sed -n 's/^API_KEY=//p' ${config.sops.secrets.gangway-env.path})
+          case "$key" in
+            \"*\") key=''${key#\"}; key=''${key%\"} ;;
+            \'*\') key=''${key#\'}; key=''${key%\'} ;;
+          esac
           if [ -z "$key" ] || printf '%s' "$key" | grep -q '[[:cntrl:]]'; then
             echo "API_KEY is empty or holds a control character" >&2
             exit 1
@@ -114,6 +124,11 @@
           escaped=$(printf '%s' "$key" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\$/''${gangway_dollar}/g')
           printf 'if ($server_addr = 10.44.0.2) { set $gangway_api_key "%s"; }\n' "$escaped" \
             > /run/gangway-nginx/api-key.conf
+        '';
+        postStart = ''
+          if systemctl is-active --quiet nginx.service; then
+            systemctl reload --no-block nginx.service
+          fi
         '';
       };
     };

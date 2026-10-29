@@ -1,0 +1,33 @@
+beat_switch:
+  beats_per_switch: 16
+  animations:
+  - beat_wave:
+      color:
+        r: 255
+        g: 0
+        b: 128
+        cw: 0
+        ww: 0
+      background:
+        audio_gain:
+          animation:
+            rainbow: {}
+          source: bass
+          min_gain: 0.05
+          max_gain: 0.3
+      direction: y
+      speed: 400.0
+      width: 80.0
+  - spectrum:
+      direction: y
+      min_brightness: 0.05
+  - beat_ripples:
+      color:
+        r: 0
+        g: 128
+        b: 255
+        cw: 0
+        ww: 0
+      speed: 300.0
+      width: 40.0
+      max_radius: 300.0

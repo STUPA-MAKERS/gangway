@@ -3,10 +3,14 @@
 from pathlib import Path
 
 import pytest
+import yaml
 from rpi_ws2805 import RGBCCT
 
 from gangway.animations.meta import preset
-from gangway.config import CONFIG, GANGWAYConfig
+from gangway.config import ANIMATION_FUNCTIONS, CONFIG, GANGWAYConfig
+from gangway.helpers import as_animation, parse_animation
+from gangway.types import LED, AudioState, Point, Rectangle, SceneContext
+from gangway.yaml_loader import GangwayLoader
 
 BLUE_PRESET_YAML = """
 r: 0
@@ -46,3 +50,25 @@ def test_config_with_preset_animation_loads(state_dir: Path) -> None:
     config_path.write_text("strips: []\nanimation:\n  preset:\n    name: Blue\n")
 
     assert RGBCCT(b=255) == GANGWAYConfig(config_path).ANIMATION
+
+
+@pytest.mark.parametrize(
+    "path",
+    sorted((Path(__file__).parent.parent / "presets").glob("*.yaml")),
+    ids=lambda p: p.stem,
+)
+def test_shipped_preset_renders(path: Path) -> None:
+    """Parse each preset that the package installs and render one LED."""
+    with open(path) as f:
+        data = yaml.load(f, Loader=GangwayLoader)
+    animation = as_animation(parse_animation(data, ANIMATION_FUNCTIONS))
+    floor = Rectangle(Point(0, 0), Point(115, 505))
+    ctx = SceneContext(floor=floor, leds=[], audio=AudioState(beats=(0.5,)))
+
+    color = (
+        animation(1.0, ctx, LED(index=0, p=Point(50, 200)), [])
+        if callable(animation)
+        else animation
+    )
+
+    assert isinstance(color, RGBCCT)

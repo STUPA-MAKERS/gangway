@@ -81,7 +81,10 @@ def extrapolate(animation: AnimationOrColor, latency: float = 0.0) -> Animation:
     Returns:
         The animation. The velocity needs the measurement of an earlier
         frame, so the animation keeps the tracks of the visible persons.
-        Each call replaces the mapping with a new one.
+        The animation gets one call for each LED, but the time and the
+        persons change only between frames. Thus the first call of a frame
+        replaces the tracks and the predictions, and the other calls reuse
+        them.
     """
 
     def step(acc: _Step, obj: TrackedPoint) -> _Step:
@@ -98,6 +101,7 @@ def extrapolate(animation: AnimationOrColor, latency: float = 0.0) -> Animation:
         )
 
     tracks: _Tracks = {}
+    frame: tuple[float, Sequence[TrackedPoint], tuple[TrackedPoint, ...]] | None = None
 
     def func(
         time: float,
@@ -105,10 +109,14 @@ def extrapolate(animation: AnimationOrColor, latency: float = 0.0) -> Animation:
         led: LED,
         objects: Sequence[TrackedPoint],
     ) -> RGBCCT:
-        nonlocal tracks
-        updated, predicted = reduce(step, objects, (tracks, ()))
-        current_ids = {obj.id for obj in objects}
-        tracks = {key: track for key, track in updated.items() if key in current_ids}
-        return render(animation, time, ctx, led, predicted)
+        nonlocal tracks, frame
+        if frame is None or frame[0] != time or frame[1] is not objects:
+            updated, predicted = reduce(step, objects, (tracks, ()))
+            current_ids = {obj.id for obj in objects}
+            tracks = {
+                key: track for key, track in updated.items() if key in current_ids
+            }
+            frame = (time, objects, predicted)
+        return render(animation, time, ctx, led, frame[2])
 
     return func

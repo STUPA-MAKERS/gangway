@@ -262,3 +262,39 @@ def test_schedule_with_an_invalid_range_uses_the_default(
     monkeypatch.setattr(datetime, "datetime", FakeDateTime)
     anim = schedule(RED, GREEN, start=cast("str", start), end=cast("str", end))
     assert anim(0.0, ctx, led, []) == RED
+
+
+def test_paint_scene_test_matches_the_single_led_test() -> None:
+    """The hit test for all LEDs of a frame matches the test for one LED."""
+    leds = [LED(index=i, p=Point(i * 10.0, 50)) for i in range(11)]
+    floor = Rectangle(Point(0, 0), Point(100, 100))
+    scene = SceneContext(floor=floor, leds=leds)
+    alone = SceneContext(floor=floor, leds=[])
+    people = [TrackedPoint(20, 50), TrackedPoint(75, 52)]
+    in_scene, single = paint(RED, GREEN, radius=10), paint(RED, GREEN, radius=10)
+
+    assert [in_scene(0.0, scene, led, people) for led in leds] == [
+        single(0.0, alone, led, people) for led in leds
+    ]
+    assert in_scene(0.0, scene, leds[2], people) == RED
+    assert in_scene(0.0, scene, leds[5], people) == GREEN
+
+
+def test_extrapolate_predicts_once_per_frame(ctx: SceneContext, led: LED) -> None:
+    """All LEDs of a frame get the same predicted persons."""
+    seen: list[Sequence[TrackedPoint]] = []
+
+    def record(
+        _time: float, _ctx: SceneContext, _led: LED, objects: Sequence[TrackedPoint]
+    ) -> RGBCCT:
+        seen.append(objects)
+        return RED
+
+    anim = extrapolate(record, latency=1.0)
+    people = [TrackedPoint(30, 50, id=1, timestamp=0.0)]
+    anim(0.0, ctx, led, people)
+    anim(0.0, ctx, led, people)
+    anim(1.0, ctx, led, people)
+
+    assert seen[0] is seen[1]
+    assert seen[2] is not seen[0]

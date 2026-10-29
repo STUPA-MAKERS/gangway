@@ -8,7 +8,8 @@ from typing import TypedDict
 import yaml
 from rpi_ws2805 import RGBCCT
 
-from .animations import idle, meta, responsive
+from .animations import audio, idle, meta, responsive
+from .audio import AudioConfig, AudioSettings, parse_settings
 from .helpers import AnimationFactory, as_animation, interpolate_points, parse_animation
 from .types import LED, AnimationOrColor, Point, Rectangle, Strip, YamlValue
 from .yaml_loader import GangwayLoader
@@ -68,17 +69,19 @@ class ConfigFile(TypedDict, total=False):
         leds: The global LED settings.
         strips: The LED strip segments.
         animation: The config of the active animation.
+        audio: The sound capture for the audio animations.
     """
 
     projection: ProjectionConfig
     leds: LedsConfig
     strips: list[StripConfig]
     animation: YamlValue
+    audio: AudioConfig
 
 
 def _get_animation_functions() -> dict[str, AnimationFactory]:
     functions: dict[str, AnimationFactory] = {}
-    for package in (idle, responsive, meta):
+    for package in (idle, responsive, meta, audio):
         for name in package.__all__:
             functions[name] = getattr(package, name)
     functions["RGBCCT"] = RGBCCT
@@ -105,6 +108,8 @@ class GANGWAYConfig:
         OFFSET_Y: The y offset for all strips.
         LEDS: All LEDs with their floor positions.
         ANIMATION: The active animation.
+        AUDIO: The sound capture settings. The capture reads them once at
+            the start of the application.
     """
 
     path: Path
@@ -119,6 +124,7 @@ class GANGWAYConfig:
     OFFSET_Y: float
     LEDS: list[LED]
     ANIMATION: AnimationOrColor
+    AUDIO: AudioSettings
 
     def __init__(self, path: Path, *, load: bool = True) -> None:
         """Load the config file.
@@ -136,8 +142,10 @@ class GANGWAYConfig:
         """Read the config file again and update all attributes.
 
         Raises:
-            ValueError: If the animation config is not valid.
-            TypeError: If the animation config is not valid.
+            ValueError: If the animation config or the audio section is not
+                valid.
+            TypeError: If the animation config or the audio section is not
+                valid.
         """
         with self._lock:
             with open(self.path) as f:
@@ -181,6 +189,10 @@ class GANGWAYConfig:
                 for strip_idx, strip in enumerate(self.STRIPS)
                 for i in range(strip.len)
             ]
+
+            # A missing section gives the defaults, so the microphone works
+            # with the config files from before the audio animations.
+            self.AUDIO = parse_settings(config.get("audio"))
 
             self.ANIMATION = as_animation(
                 parse_animation(config.get("animation", {}), ANIMATION_FUNCTIONS)

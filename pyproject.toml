@@ -13,6 +13,7 @@ dependencies = [
   "python-dotenv",
   "pyyaml",
   "requests",
+  "sounddevice",
   "uvicorn",
   # The WS2805 driver is not on PyPI. Install it from rpi-ws2805-python/library.
   "rpi_ws2805",

@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 import yaml
 from fastapi.testclient import TestClient
+from rpi_ws2805 import RGBCCT
 
 from gangway.api import app
 from gangway.config import CONFIG
@@ -113,3 +114,90 @@ def test_update_config(
     saved = yaml.safe_load(CONFIG.path.read_text())
     assert next(iter(saved["animation"])) == next(iter(animation))
     controller.reload_config.assert_called_once()
+
+
+AUDIO_ANIMATIONS: list[dict[str, object]] = [
+    {
+        "beat_wave": {
+            "color": {"r": 255, "g": 255, "b": 255},
+            "background": {"rainbow": {}},
+            "direction": "x",
+            "reverse": True,
+            "speed": 300,
+            "width": 50,
+        }
+    },
+    {"beat_ripples": {"max_radius": 200}},
+    {"spectrum": {"colors": [{"r": 255}, {"b": 255}], "min_brightness": 0.1}},
+    {"beat_pulse": {"decay": 0.2}},
+    {"level": {"source": "bass", "direction": "y"}},
+    {"audio_gain": {"animation": {"rainbow": {}}, "source": "treble"}},
+    {"beat_switch": {"animations": [{"beat_pulse": {}}], "beats_per_switch": 8}},
+]
+
+
+@pytest.mark.parametrize("animation", AUDIO_ANIMATIONS)
+def test_update_config_with_audio_animations(
+    client: TestClient, controller: MagicMock, animation: dict[str, object]
+) -> None:
+    """The API accepts each audio animation and the config loads it."""
+    response = client.put(
+        "/api/config/", json={**CONFIG_DATA, "animation": animation}, headers=HEADERS
+    )
+
+    assert response.status_code == 200, response.text
+    assert not isinstance(CONFIG.ANIMATION, RGBCCT)
+    controller.reload_config.assert_called_once()
+
+
+def test_update_config_rejects_a_bad_audio_parameter(client: TestClient) -> None:
+    """A value out of range or an unknown source gives 422."""
+    for animation in (
+        {"beat_switch": {"beats_per_switch": 0}},
+        {"level": {"source": "loudness"}},
+    ):
+        response = client.put(
+            "/api/config/",
+            json={**CONFIG_DATA, "animation": animation},
+            headers=HEADERS,
+        )
+        assert response.status_code == 422
+
+
+def test_update_config_keeps_the_audio_section(
+    client: TestClient, controller: MagicMock
+) -> None:
+    """A new animation keeps the audio section of the file, and no section stays."""
+    _ = client.put("/api/config/", json=CONFIG_DATA, headers=HEADERS)
+    assert "audio" not in yaml.safe_load(CONFIG.path.read_text())
+
+    data = {**CONFIG_DATA, "audio": {"device": "USB", "noise_floor": 0.02}}
+    CONFIG.path.write_text(yaml.safe_dump(data))
+    response = client.put("/api/config/", json=CONFIG_DATA, headers=HEADERS)
+
+    assert response.status_code == 200, response.text
+    saved = yaml.safe_load(CONFIG.path.read_text())
+    assert saved["audio"]["device"] == "USB"
+    assert CONFIG.AUDIO.noise_floor == 0.02
+    assert controller.reload_config.call_count == 2
+
+
+def test_animations_endpoint_lists_the_audio_animations(client: TestClient) -> None:
+    """The editor gets the audio animations with their parameters."""
+    response = client.get("/api/animations/", headers=HEADERS)
+    by_name = {a["name"]: a for a in response.json()}
+
+    names = {next(iter(a)) for a in AUDIO_ANIMATIONS}
+    assert names <= set(by_name)
+    params = {p["name"]: p for p in by_name["level"]["params"]}
+    assert params["source"]["type"]["name"] == "Literal"
+    assert params["reverse"]["type"]["name"] == "bool"
+
+
+def test_audio_data_without_capture(client: TestClient) -> None:
+    """The audio endpoint gives silence when no microphone thread runs."""
+    response = client.get("/api/data/audio", headers=HEADERS)
+
+    assert response.status_code == 200
+    assert response.json()["capturing"] is False
+    assert response.json()["since_beat"] is None

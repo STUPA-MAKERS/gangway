@@ -2,7 +2,7 @@
 
 import collections
 import time
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from threading import Thread
 from typing import override
 
@@ -18,7 +18,19 @@ from .defaults import (
     LED_PIN,
     WS2805_STRIP,
 )
-from .types import LED, AnimationOrColor, Rectangle, SceneContext, TrackedPoint
+from .types import (
+    LED,
+    SILENT_AUDIO,
+    AnimationOrColor,
+    AudioState,
+    Rectangle,
+    SceneContext,
+    TrackedPoint,
+)
+
+
+def _silence() -> AudioState:
+    return SILENT_AUDIO
 
 
 class LEDController(Thread):
@@ -34,6 +46,8 @@ class LEDController(Thread):
         current_colors: The last colors sent to the strip, by LED index.
         last_objects: The last detected persons.
         init_time: The start time of the animation, as a Unix timestamp.
+        audio_source: The function that gives the latest sound snapshot.
+            Its beat times use the `time.monotonic` clock.
         fps: The mean frames per second.
         tpf_min: The shortest frame time in seconds.
         tpf_max: The longest frame time in seconds.
@@ -52,6 +66,7 @@ class LEDController(Thread):
     last_objects: Sequence[TrackedPoint]
 
     init_time: float
+    audio_source: Callable[[], AudioState]
 
     fps: float = 0.0
     tpf_min: float = 0.0
@@ -59,16 +74,24 @@ class LEDController(Thread):
     tpf_avg: float = 0.0
     _frame_times: collections.deque[float]
 
-    def __init__(self, gangway_config: GANGWAYConfig = CONFIG) -> None:
+    def __init__(
+        self,
+        gangway_config: GANGWAYConfig = CONFIG,
+        audio_source: Callable[[], AudioState] = _silence,
+    ) -> None:
         """Read the config and initialize the LED driver.
 
         Args:
             gangway_config: The config to read.
+            audio_source: The function that gives the latest sound
+                snapshot, for example `gangway.audio.AudioCapture.latest`.
+                Its beat times must use the `time.monotonic` clock.
         """
         super().__init__()
 
         self.init_time = time.time()
         self.config = gangway_config
+        self.audio_source = audio_source
         self.last_objects = []
         self._frame_times = collections.deque(maxlen=100)
 
@@ -145,29 +168,52 @@ class LEDController(Thread):
 
         self.strip.show()
 
+    def frame(self) -> tuple[float, SceneContext]:
+        """Get the time and the scene context for the next frame.
+
+        Returns:
+            The animation time and the scene context. All LEDs of a frame
+            get the same values, so the animations can compute their frame
+            values once. The context holds the latest sound snapshot, with
+            the beat times moved from `time.monotonic` to the animation
+            time.
+        """
+        # The animation time comes from the wall clock, which can jump, for
+        # example on the first NTP sync of the Pi. Both clocks are read
+        # together for each frame, so a beat stays at the right age after
+        # a jump.
+        now = self.time
+        offset = now - time.monotonic()
+        return now, SceneContext(
+            self.floor, self.leds, self.audio_source().shifted(offset)
+        )
+
     @property
     def context(self) -> SceneContext:
         """The scene context for the animation."""
-        return SceneContext(
-            self.floor,
-            self.leds,
-        )
+        return self.frame()[1]
+
+    def render(self, now: float, ctx: SceneContext) -> dict[int, RGBCCT]:
+        """Get the colors of one frame.
+
+        Args:
+            now: The animation time.
+            ctx: The scene context of the frame.
+
+        Returns:
+            The colors by LED index.
+        """
+        animation = self.animation
+        objects = self.last_objects
+        if isinstance(animation, RGBCCT):
+            return {led.index: animation for led in self.leds}
+        return {led.index: animation(now, ctx, led, objects) for led in self.leds}
 
     @property
     def animate(self) -> Iterator[dict[int, RGBCCT]]:
         """An endless iterator over the colors of each frame."""
         while True:
-            yield {
-                led.index: self.animation
-                if isinstance(self.animation, RGBCCT)
-                else self.animation(
-                    self.time,
-                    self.context,
-                    led,
-                    self.last_objects,
-                )
-                for led in self.leds
-            }
+            yield self.render(*self.frame())
 
     @override
     def run(self) -> None:

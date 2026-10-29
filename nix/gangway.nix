@@ -10,6 +10,7 @@
     the fileset selects, so a change to the frontend or a README does not
     rebuild the backend
   - `rpi-ws2805` — the LED driver from ./rpi-ws2805.nix
+  - `sounddevice` — reads the USB microphone for the audio animations
 
   # Defines
   - `passthru.pythonDeps` — the run-time dependencies as a function of a
@@ -37,6 +38,9 @@ let
     ps.python-dotenv
     ps.pyyaml
     ps.requests
+    # nixpkgs patches the PortAudio path into sounddevice, so the library
+    # resolves on NixOS without LD_LIBRARY_PATH. That PortAudio has ALSA.
+    ps.sounddevice
     ps.uvicorn
     (rpi-ws2805.override { python3Packages = ps; })
   ];

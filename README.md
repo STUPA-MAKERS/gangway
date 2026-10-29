@@ -67,7 +67,7 @@ Animations are defined as Python functions that determine the color of a specifi
 
 *   **Input**:
     *   `time`: Current system time.
-    *   `ctx`: Scene context (floor dimensions, LED positions).
+    *   `ctx`: Scene context (floor dimensions, LED positions, sound analysis).
     *   `led`: The specific LED being rendered.
     *   `objects`: A list of currently detected people (coordinates).
 *   **Output**: An `RGBCCT` color value.
@@ -93,6 +93,99 @@ A powerful feature of the system is the ability to nest animations recursively. 
 *   **Infinite Depth**: Since a meta-animation conforms to the standard animation interface, it can be wrapped in another meta-animation. You can have a `schedule` that switches between a `blend` and a `proximity` animation.
 
 This functional approach allows for high flexibility and rapid experimentation with visual effects.
+
+## Sound
+
+A USB microphone lets the animations react to music. The microphone is an
+AKM AK5371 (ALSA card `AK5371`). It records only. It supports 1 or 2
+channels and the sample rates 8000, 11025, 22050, 44100 and 48000 Hz.
+
+The onboard audio of the Pi stays off, because it uses PWM0, and PWM0 sends
+the LED data. The USB microphone does not use PWM0.
+
+### Data flow
+
+1. The thread `gangway.audio.AudioCapture` reads blocks of 512 samples at
+   22050 Hz from the microphone (about 43 blocks each second). It uses
+   [sounddevice](https://python-sounddevice.readthedocs.io/) and PortAudio
+   with ALSA.
+2. For each block, the pure functions in `gangway/audio/dsp.py` calculate a
+   new `AudioState` snapshot:
+   *   `level`: the loudness (RMS) of the block.
+   *   `bass` (40 to 150 Hz), `mid` (150 to 2000 Hz) and `treble` (2000 to
+       8000 Hz): the energy of each band, from an FFT with a Hann window
+       over the last 1024 samples.
+   *   `spectrum`: 8 narrower bands from 40 to 8000 Hz.
+   *   `beats`, `last_beat`, `beat_count` and `tempo`: the beat detection.
+3. The LED controller puts the latest snapshot into the scene context of
+   each frame (`ctx.audio`). It changes the beat times to the clock of the
+   `time` argument of the animations.
+
+All values are from 0 to 1. An automatic gain control divides each value by
+its recent peak. The peak halves in 5 s when the sound gets quieter, so a
+quiet room and a loud room both reach 1. A value at the noise floor or
+below it gives 0.
+
+A beat is a fast rise of the bass energy. The rise must be more than the
+mean plus 1.5 standard deviations of the rises in the last second. It must
+also be more than 10 % of the bass peak. After a beat, the next beat can
+occur after 0.25 s or more.
+
+If the microphone is missing or fails, the snapshot is silent. The thread
+writes one message to the log and tries again every 5 s. The LEDs and the
+API continue.
+
+`GET /api/data/audio` shows the values of the latest snapshot. Use it to
+tune the settings with music in the room.
+
+### Settings
+
+The `audio` section of `config.yaml` is optional. If it is not there, the
+defaults apply:
+
+```yaml
+audio:
+  enabled: true          # false: do not open the microphone
+  device: AK5371         # a part of the device name, or the device index
+  sample_rate: 22050     # the device must support this rate
+  block_size: 512        # samples per block
+  noise_floor: 0.01      # RMS that counts as silence (0.01 = -40 dBFS)
+```
+
+The device search prefers the `hw:` device of the card, because the other
+ALSA devices resample or mix in software. The capture reads the settings
+once, when the application starts. The web UI does not change this section.
+
+### Audio animations
+
+The animations are in `gangway/animations/audio/`. Without sound, each one
+shows its background.
+
+| Animation | Effect |
+|-----------|--------|
+| `beat_wave` | On each beat, a wave front moves from one side of the floor to the other. Parameters: `color`, `background`, `direction`, `reverse`, `speed` (floor units per second), `width` (length of the tail). |
+| `beat_ripples` | On each beat, a ring grows from each person. Parameters: `color`, `background`, `speed`, `width`, `max_radius`. |
+| `spectrum` | An equalizer along an axis: the bass at one end, the treble at the other end. Parameters: `colors` (the palette from bass to treble), `background`, `direction`, `reverse`, `min_brightness`. |
+| `beat_pulse` | All LEDs flash on each beat and fade exponentially. Parameters: `color`, `background`, `decay` (time constant in seconds). |
+| `level` | A VU meter along an axis, with a peak dot that falls slowly. Parameters: `color`, `peak_color`, `background`, `direction`, `reverse`, `source`, `peak_fall`, `peak_width`. |
+| `audio_gain` | A meta-animation. It multiplies the brightness of an animation by an audio value. Parameters: `animation`, `source` (`level`, `bass`, `mid` or `treble`), `min_gain`, `max_gain`. |
+| `beat_switch` | A meta-animation. It shows the next animation after each `beats_per_switch` beats. Parameters: `animations`, `beats_per_switch`. |
+
+Example:
+
+```yaml
+animation:
+  beat_switch:
+    beats_per_switch: 16
+    animations:
+      - beat_wave:
+          color: {r: 255, g: 0, b: 128}
+          background:
+            audio_gain:
+              animation: {rainbow: {}}
+              min_gain: 0.1
+      - spectrum: {direction: y}
+```
 
 ## User Interface
 

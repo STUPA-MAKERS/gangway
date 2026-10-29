@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Start the gangway LED controller.
 
-The program starts the LED render thread, the Xovis receiver on port 8081
-and the API on port 8082. It runs until Ctrl+C.
+The program starts the microphone thread, the LED render thread, the Xovis
+receiver on port 8081 and the API on port 8082. It runs until Ctrl+C.
 """
 
 import argparse
 import asyncio
 import contextlib
+import logging
 from pathlib import Path
 
 import uvicorn
@@ -15,6 +16,7 @@ from dotenv import load_dotenv
 
 from gangway import config
 from gangway.api import app
+from gangway.audio import AudioCapture
 from gangway.led_controller import LEDController
 from gangway.state import STATE
 from gangway.types import TrackedPoint
@@ -33,9 +35,20 @@ async def main() -> None:
         config.CONFIG.path = config_path
         config.CONFIG.load()
 
+    # Uvicorn configures only its own loggers. This handler shows the
+    # messages of the other modules, for example of the audio capture.
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
+    )
+
     print("Starting components...")
 
-    led_controller = LEDController()
+    audio_capture = AudioCapture(config.CONFIG.AUDIO)
+    if config.CONFIG.AUDIO.enabled:
+        STATE.audio_capture = audio_capture
+        audio_capture.start()
+
+    led_controller = LEDController(audio_source=audio_capture.latest)
     STATE.led_controller = led_controller
     led_controller.start()
 
@@ -73,6 +86,10 @@ async def main() -> None:
             print("LED Controller stopped.")
         except Exception as e:
             print(f"Error stopping LED Controller: {e}")
+
+        # A blocked read of the device takes one block, so a short wait is
+        # enough. The thread is a daemon and cannot hold the exit.
+        audio_capture.stop(timeout=1.0)
 
 
 if __name__ == "__main__":

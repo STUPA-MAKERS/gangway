@@ -329,6 +329,92 @@ class PresetParams(BaseModel):
     name: str = Field(..., description="Name of the preset to load.")
 
 
+class BeatWaveParams(BaseModel):
+    """Parameters for the beat_wave animation."""
+
+    color: RGBCCTModel = Field(default=RGBCCTModel(r=255, g=255, b=255, cw=0, ww=0))
+    background: Union["AnimationModel", RGBCCTModel] = Field(
+        default=RGBCCTModel(r=0, g=0, b=0, cw=0, ww=0)
+    )
+    direction: Literal["x", "y"] = "y"
+    reverse: bool = False
+    speed: float = Field(default=400.0, gt=0)
+    width: float = Field(default=80.0, gt=0)
+
+
+class BeatRipplesParams(BaseModel):
+    """Parameters for the beat_ripples animation."""
+
+    color: RGBCCTModel = Field(default=RGBCCTModel(r=0, g=128, b=255, cw=0, ww=0))
+    background: Union["AnimationModel", RGBCCTModel] = Field(
+        default=RGBCCTModel(r=0, g=0, b=0, cw=0, ww=0)
+    )
+    speed: float = Field(default=300.0, gt=0)
+    width: float = Field(default=40.0, gt=0)
+    max_radius: float = Field(default=300.0, gt=0)
+
+
+class SpectrumParams(BaseModel):
+    """Parameters for the spectrum animation."""
+
+    colors: list[RGBCCTModel] = Field(
+        default=[
+            RGBCCTModel(r=255, g=0, b=0, cw=0, ww=0),
+            RGBCCTModel(r=0, g=255, b=0, cw=0, ww=0),
+            RGBCCTModel(r=0, g=0, b=255, cw=0, ww=0),
+        ]
+    )
+    background: Union["AnimationModel", RGBCCTModel] = Field(
+        default=RGBCCTModel(r=0, g=0, b=0, cw=0, ww=0)
+    )
+    direction: Literal["x", "y"] = "y"
+    reverse: bool = False
+    min_brightness: float = Field(default=0.0, ge=0, le=1)
+
+
+class BeatPulseParams(BaseModel):
+    """Parameters for the beat_pulse animation."""
+
+    color: RGBCCTModel = Field(default=RGBCCTModel(r=255, g=255, b=255, cw=0, ww=0))
+    background: Union["AnimationModel", RGBCCTModel] = Field(
+        default=RGBCCTModel(r=0, g=0, b=0, cw=0, ww=0)
+    )
+    decay: float = Field(default=0.25, gt=0)
+
+
+class LevelParams(BaseModel):
+    """Parameters for the level animation."""
+
+    color: RGBCCTModel = Field(default=RGBCCTModel(r=0, g=255, b=0, cw=0, ww=0))
+    peak_color: RGBCCTModel = Field(default=RGBCCTModel(r=255, g=0, b=0, cw=0, ww=0))
+    background: Union["AnimationModel", RGBCCTModel] = Field(
+        default=RGBCCTModel(r=0, g=0, b=0, cw=0, ww=0)
+    )
+    direction: Literal["x", "y"] = "y"
+    reverse: bool = False
+    source: Literal["level", "bass", "mid", "treble"] = "level"
+    peak_fall: float = Field(default=0.5, ge=0)
+    peak_width: float = Field(default=15.0, ge=0)
+
+
+class AudioGainParams(BaseModel):
+    """Parameters for the audio_gain animation."""
+
+    animation: Union["AnimationModel", RGBCCTModel] = Field(
+        default=RGBCCTModel(r=255, g=255, b=255, cw=0, ww=0)
+    )
+    source: Literal["level", "bass", "mid", "treble"] = "level"
+    min_gain: float = Field(default=0.0, ge=0)
+    max_gain: float = Field(default=1.0, ge=0)
+
+
+class BeatSwitchParams(BaseModel):
+    """Parameters for the beat_switch animation."""
+
+    animations: list["AnimationModel"] = Field(default_factory=list)
+    beats_per_switch: int = Field(default=4, ge=1)
+
+
 class AlternateAnimation(BaseModel):
     """Wrapper for the alternate animation."""
 
@@ -676,6 +762,90 @@ class PresetAnimation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class BeatWaveAnimation(BaseModel):
+    """Wrapper for the beat_wave animation."""
+
+    beat_wave: BeatWaveParams = Field(
+        ...,
+        title="Beat Wave (Audio)",
+        description="Sends a wave front across the floor on each beat.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class BeatRipplesAnimation(BaseModel):
+    """Wrapper for the beat_ripples animation."""
+
+    beat_ripples: BeatRipplesParams = Field(
+        ...,
+        title="Beat Ripples (Audio/Responsive)",
+        description="Sends a ring out from each person on each beat.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class SpectrumAnimation(BaseModel):
+    """Wrapper for the spectrum animation."""
+
+    spectrum: SpectrumParams = Field(
+        ...,
+        title="Spectrum (Audio)",
+        description="Shows the floor as an equalizer from bass to treble.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class BeatPulseAnimation(BaseModel):
+    """Wrapper for the beat_pulse animation."""
+
+    beat_pulse: BeatPulseParams = Field(
+        ...,
+        title="Beat Pulse (Audio)",
+        description="Flashes all LEDs on each beat and fades out.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class LevelAnimation(BaseModel):
+    """Wrapper for the level animation."""
+
+    level: LevelParams = Field(
+        ...,
+        title="Level Meter (Audio)",
+        description="A VU meter along an axis with a falling peak dot.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class AudioGainAnimation(BaseModel):
+    """Wrapper for the audio_gain animation."""
+
+    audio_gain: AudioGainParams = Field(
+        ...,
+        title="Audio Gain (Meta/Audio)",
+        description="Scales the brightness of an animation by the loudness.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class BeatSwitchAnimation(BaseModel):
+    """Wrapper for the beat_switch animation."""
+
+    beat_switch: BeatSwitchParams = Field(
+        ...,
+        title="Beat Switch (Meta/Audio)",
+        description="Steps to the next animation after a number of beats.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
 AnimationModel = Union[
     AlternateAnimation,
     FireAnimation,
@@ -707,6 +877,13 @@ AnimationModel = Union[
     ExtrapolateAnimation,
     ByStripAnimation,
     PresetAnimation,
+    BeatWaveAnimation,
+    BeatRipplesAnimation,
+    SpectrumAnimation,
+    BeatPulseAnimation,
+    LevelAnimation,
+    AudioGainAnimation,
+    BeatSwitchAnimation,
 ]
 
 DayOfWeekParams.model_rebuild()
@@ -739,3 +916,10 @@ LightningStormParams.model_rebuild()
 ProximityParams.model_rebuild()
 ProximitySpeedParams.model_rebuild()
 PersistParams.model_rebuild()
+BeatWaveParams.model_rebuild()
+BeatRipplesParams.model_rebuild()
+SpectrumParams.model_rebuild()
+BeatPulseParams.model_rebuild()
+LevelParams.model_rebuild()
+AudioGainParams.model_rebuild()
+BeatSwitchParams.model_rebuild()

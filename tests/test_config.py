@@ -6,6 +6,7 @@ import pytest
 import yaml
 from rpi_ws2805 import RGBCCT
 
+from gangway.audio import AudioSettings
 from gangway.config import GANGWAYConfig
 
 SAMPLE_CONFIG_YAML = """
@@ -74,3 +75,14 @@ def test_save_config(config_path: Path) -> None:
     cfg.save()
 
     assert yaml.safe_load(config_path.read_text()) == yaml.safe_load(SAMPLE_CONFIG_YAML)
+
+
+def test_audio_section(config_path: Path) -> None:
+    """A missing audio section gives the defaults, and a section sets them."""
+    assert AudioSettings() == GANGWAYConfig(config_path).AUDIO
+
+    config_path.write_text(
+        SAMPLE_CONFIG_YAML + "\naudio:\n  enabled: false\n  device: 2\n"
+    )
+    expected = AudioSettings(enabled=False, device=2)
+    assert expected == GANGWAYConfig(config_path).AUDIO

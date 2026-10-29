@@ -31,7 +31,14 @@ Gangway is a Python-based lighting control system for an interactive art install
 - Uses a custom `rpi_ws2805` library (located in `rpi-ws2805-python/library`) to communicate with the LED strips via PWM0 on GPIO 18. The analog audio also uses PWM0, so the system turns the onboard audio off. The USB microphone does not use PWM0.
 
 ### 5. Frontend (`./frontend/`)
-The frontend is written in Next.js.
+- The frontend is an Angular 20 single-page app: standalone components, signals and `OnPush`. It uses the STUPA-MAKERS ui-kit, a git submodule in `frontend/vendor/ui-kit`. The tsconfig path `@stupa-makers/ui-kit` points to its sources. Follow `STUPA-Workflow/frontend/DESIGN_SYSTEM.md`: use the kit components and the semantic tokens only.
+- `src/app/layout/`: the shell (navigation rail, bottom bar on a phone) and the prompt for the API key.
+- `src/app/pages/`: `live`, `animation` and `presets`.
+- `src/app/features/animation-editor/`: the recursive editor. `schema.ts` reads the animation schema of `GET /api/animations/` and checks a draft. A new animation in the backend needs no change here.
+- `src/app/features/visualization/`: the canvas of the live view. `audio-meter/` shows `GET /api/data/audio`.
+- `src/app/core/`: the API client, the API key, the app state (`ConfigStore`), the theme and the service worker update.
+- Requests go out with no `X-API-Key` first, because nginx adds the key on the SSO tunnel. On 401 or 403 the shell asks for the key.
+- Check with `npm run build`, `npm test` (jest and Testing Library) and `npm run lint` in `frontend/`. Nix builds the static files (`nix/gangway-frontend.nix`) and nginx serves them. The flake input `ui-kit` must have the commit of the submodule.
 
 ### 6. System (`./flake.nix`, `./modules/`, `./nix/`)
 - The flake describes the whole Raspberry Pi with NixOS and nixos-raspberrypi. See the "System (NixOS)" section of README.md.

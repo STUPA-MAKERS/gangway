@@ -189,11 +189,31 @@ animation:
 
 ## User Interface
 
-A frontend interface is provided to manage animations and settings.
+The web UI is an Angular single-page app in `frontend/`. It uses the
+components and the design tokens of the STUPA-MAKERS
+[ui-kit](https://github.com/STUPA-MAKERS/ui-kit), so it has the same look as
+STUPA-Workflow and homebox-makers. It has a light and a dark theme.
 
-![UI Overview](docs/ui_screenshot_1.png)
-![UI Settings](docs/ui_screenshot_2.png)
-![UI Controls](docs/ui_screenshot_3.png)
+The UI has three pages:
+
+- **Live** shows the strips in their current colors and the detected
+  persons. The mapped view draws on the floor plan. The raw view draws on
+  the camera image. The sound meter shows the level, the bands, the beats
+  and the tempo of the microphone.
+- **Animation** edits the active animation. The backend gives the
+  parameters of each animation (`GET /api/animations/`), so a new animation
+  needs no change in the UI. Click **Save** to apply the change.
+- **Presets** saves the current animation as a preset. It also loads,
+  edits, renames and deletes the presets.
+
+The UI sends its requests with no API key first. Through the SSO tunnel
+nginx adds the key. On the LAN the backend refuses the request, and the UI
+asks for the key. The browser keeps the key in `localStorage`. A link can
+also give the key as `?apiKey=…`.
+
+![Live view](docs/ui_screenshot_1.png)
+![Animation editor](docs/ui_screenshot_2.png)
+![Presets](docs/ui_screenshot_3.png)
 
 ## System (NixOS)
 
@@ -206,7 +226,7 @@ support comes from [nixos-raspberrypi](https://github.com/nvmd/nixos-raspberrypi
 | `flake.nix` | The inputs. All outputs come from `modules/`. |
 | `modules/hosts/gangway.nix` | The host `gangway` and its SD image. |
 | `modules/nixos/` | The system modules: network, services, app. |
-| `nix/` | The packages: backend, web UI and LED driver. |
+| `nix/` | The packages: backend, web UI and LED driver. The web UI is a set of static files that nginx serves. |
 | `secrets/gangway.yaml` | The secrets, encrypted with sops. |
 
 The admin account is `gangway`. `fsi` is an alias with the same UID, home
@@ -298,13 +318,41 @@ does not compile under emulation.
 ## Development
 
 `nix develop` opens a shell with Python 3.13, the dependencies of the app,
-ruff, basedpyright, pytest and Node.js. The shell also creates `.venv`, so
-your editor finds the same interpreter.
+ruff, basedpyright, pytest, Node.js and npm. The shell also creates `.venv`,
+so your editor finds the same interpreter.
 
 ```sh
 nix develop
 ruff check . && ruff format --check .
 basedpyright
 python -m pytest
-cd frontend && npm ci && npm run dev
 ```
+
+### Web UI
+
+The ui-kit is a git submodule in `frontend/vendor/ui-kit`. Get it before the
+first build:
+
+```sh
+git submodule update --init
+cd frontend
+npm ci
+npm start        # ng serve on http://localhost:4200, /api goes to port 8082
+npm test         # jest
+npm run lint     # eslint
+npm run build    # the static files in dist/gangway/browser
+```
+
+`npm start` needs the backend on port 8082 (`python main.py`). The UI then
+asks for the `API_KEY` of the backend.
+
+The Nix build cannot read the submodule. It copies the flake input `ui-kit`
+into `vendor/ui-kit`. If you move the submodule to a new commit, do these
+steps:
+
+1. Set the same commit in the `ui-kit` URL in `flake.nix`.
+2. Run `nix flake lock`.
+3. Run `nix build .#gangway-frontend`.
+
+After a change to `frontend/package-lock.json`, set `npmDepsHash` in
+`nix/gangway-frontend.nix` to the hash that the failed build shows.

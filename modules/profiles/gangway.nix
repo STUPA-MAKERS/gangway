@@ -18,6 +18,7 @@
     secrets
     gangway-host
     gangway-networking
+    gangway-external-tunnel
     gangway-services
     gangway-app
   ];

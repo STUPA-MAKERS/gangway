@@ -125,11 +125,12 @@ and SSH key, so `ssh fsi@gangway.local` also works.
 |-----------|---------|----------|
 | `eth0` | 10.0.0.1/24 | Private LAN for the Xovis sensor. dnsmasq gives DHCP leases from 10.0.0.2 to 10.0.0.254. The Xovis always gets 10.0.0.250. |
 | `wlan0` | DHCP | Uplink over "Iphone Hotspot", the FRITZ!Box at the site. The Pi masquerades the sensor LAN through this link. |
+| `wg-ext` | 10.44.0.2/24 | WireGuard tunnel to the StuPa gateway, which publishes the web UI as `gangway.reutlingen.university` behind an authentik login. |
 
 | Port | Service | Reachable from |
 |------|---------|----------------|
 | 22 | SSH, key only | All interfaces |
-| 80 | nginx: web UI, `/api/` and `/live` | All interfaces |
+| 80 | nginx: web UI, `/api/` and `/live` | All interfaces, `wg-ext` included |
 | 8081 | Xovis receiver | `eth0` |
 | 8082 | API | `eth0` |
 

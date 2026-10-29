@@ -1,29 +1,64 @@
 {
-    "name": "gangway-frontend",
-    "version": "0.1.0",
-    "private": true,
-    "scripts": {
-        "dev": "next dev -p 8083",
-        "build": "next build",
-        "start": "next start -p 8083 -H 0.0.0.0",
-        "lint": "next lint"
-    },
-    "dependencies": {
-        "clsx": "^2.1.0",
-        "lucide-react": "^0.368.0",
-        "next": "14.1.4",
-        "react": "^18",
-        "react-dom": "^18",
-        "react-hook-form": "^7.51.2",
-        "swr": "^2.2.5",
-        "tailwind-merge": "^2.2.2",
-        "next-pwa": "^5.6.0"
-    },
-    "devDependencies": {
-        "autoprefixer": "^10.0.1",
-        "eslint": "^8",
-        "eslint-config-next": "14.1.4",
-        "postcss": "^8",
-        "tailwindcss": "^3.3.0"
-    }
+  "name": "gangway-frontend",
+  "version": "0.2.0",
+  "description": "Gangway web UI: Angular 20 and @stupa-makers/ui-kit",
+  "private": true,
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "jest",
+    "test:ci": "jest --ci",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true,
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+        }
+      }
+    ]
+  },
+  "dependencies": {
+    "@angular/common": "^20.3.0",
+    "@angular/compiler": "^20.3.0",
+    "@angular/core": "^20.3.0",
+    "@angular/forms": "^20.3.0",
+    "@angular/platform-browser": "^20.3.0",
+    "@angular/router": "^20.3.0",
+    "@angular/service-worker": "^20.3.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular-eslint/eslint-plugin": "^20.0.0",
+    "@angular-eslint/eslint-plugin-template": "^20.0.0",
+    "@angular-eslint/template-parser": "^20.0.0",
+    "@angular/animations": "^20.3.0",
+    "@angular/build": "^20.3.0",
+    "@angular/cli": "^20.3.0",
+    "@angular/compiler-cli": "^20.3.0",
+    "@angular/platform-browser-dynamic": "^20.3.0",
+    "@eslint/js": "^9.39.0",
+    "@testing-library/angular": "^17.3.0",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.16.0",
+    "jest": "^30.0.0",
+    "jest-environment-jsdom": "^30.0.0",
+    "jest-preset-angular": "^16.0.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.18.0"
+  }
 }

@@ -1,0 +1,114 @@
+<div class="viz">
+  <div
+    #container
+    class="viz__stage"
+    (pointermove)="onPointerMove($event)"
+    (pointerleave)="onPointerLeave()"
+  >
+    @if (stats(); as s) {
+      @if (visible()) {
+        <dl class="viz__stats" aria-label="Rates">
+          <div><dt>RPS</dt><dd>{{ s.fps }}</dd></div>
+          <div><dt>UPS</dt><dd>{{ s.ups }}</dd></div>
+        </dl>
+      }
+    }
+
+    @if (showAudio()) {
+      <app-audio-meter class="viz__audio" />
+    }
+
+    <ul class="viz__legend" [class.viz__legend--on]="visible()" aria-label="Strips">
+      @for (s of strips(); track $index; let i = $index) {
+        <li
+          class="viz__strip"
+          [class.viz__strip--on]="hovered() === i"
+          (pointerenter)="hovered.set(i)"
+          (pointerleave)="hovered.set(null)"
+        >
+          <span class="viz__dot" aria-hidden="true"></span>
+          <span>Strip {{ i + 1 }}</span>
+          @if (hovered() === i) {
+            <span class="viz__meta">idx {{ s.index }} · len {{ s.len }}</span>
+          }
+        </li>
+      }
+    </ul>
+
+    <div
+      class="viz__floor"
+      [class.viz__floor--mapped]="viewMode() === 'mapped'"
+      [style.width.px]="viewMode() === 'mapped' ? floorWidth() : null"
+      [style.height.px]="viewMode() === 'mapped' ? floorHeight() : null"
+      [style.transform]="viewMode() === 'mapped' ? 'scale(' + scale() + ')' : null"
+    >
+      @if (viewMode() === 'raw' && !imageReady()) {
+        <div class="viz__wait">
+          @if (imageFailed()) {
+            <p>No camera image. The mapped view works without the camera.</p>
+          } @else {
+            <span class="viz__spinner" role="status" aria-label="Loading the camera image"></span>
+          }
+        </div>
+      }
+      @if (imageSrc()) {
+        <img
+          class="viz__img"
+          alt=""
+          [src]="imageSrc()"
+          [class.viz__img--raw]="viewMode() === 'raw'"
+          [class.viz__img--live]="viewMode() === 'raw' && showImage()"
+        />
+      }
+      <canvas
+        #canvas
+        class="viz__canvas"
+        [class.viz__canvas--on]="visible()"
+        [width]="canvasWidth()"
+        [height]="canvasHeight()"
+        aria-label="LED strips and persons"
+        role="img"
+      ></canvas>
+    </div>
+  </div>
+
+  @if (controls()) {
+    <div class="viz__bar">
+      <app-segmented
+        ariaLabel="View"
+        [options]="viewOptions"
+        [value]="viewMode()"
+        (valueChange)="setView($event)"
+      />
+      <div class="viz__toggles">
+        <app-button
+          variant="tonal"
+          [iconOnly]="true"
+          [ariaPressed]="showImage()"
+          ariaLabel="Live camera image"
+          (click)="showImage.set(!showImage())"
+        >
+          <app-icon [name]="showImage() ? 'stop' : 'play'" [size]="20" />
+        </app-button>
+        <app-button
+          variant="tonal"
+          [iconOnly]="true"
+          [ariaPressed]="showObjects()"
+          ariaLabel="Persons"
+          (click)="showObjects.set(!showObjects())"
+        >
+          <app-icon name="users" [size]="20" />
+        </app-button>
+        <app-button
+          variant="tonal"
+          [iconOnly]="true"
+          [ariaPressed]="showAudio()"
+          ariaLabel="Sound"
+          (click)="showAudio.set(!showAudio())"
+        >
+          <app-icon name="bolt" [size]="20" />
+        </app-button>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,92 @@
+<a class="skip-link" href="#main">Skip to the content</a>
+
+<div class="frame" [class.frame--rail]="!phone()" [class.frame--phone]="phone()">
+  @if (!phone()) {
+    <nav class="rail" aria-label="Main">
+      <a class="rail__brand" routerLink="/live" aria-label="Gangway">
+        <img src="favicon.svg" alt="" width="40" height="40" />
+      </a>
+      @for (item of items; track item.path) {
+        <a
+          class="rail__item"
+          [routerLink]="item.path"
+          routerLinkActive="is-active"
+          ariaCurrentWhenActive="page"
+        >
+          <span class="rail__ind"><app-icon [name]="item.icon" [size]="22" /></span>
+          <span class="rail__label">{{ item.label }}</span>
+        </a>
+      }
+      <span class="rail__spacer"></span>
+      @if (keys.key()) {
+        <button type="button" class="rail__item" (click)="forgetKey()">
+          <span class="rail__ind"><app-icon name="key" [size]="22" /></span>
+          <span class="rail__label">Forget key</span>
+        </button>
+      }
+      <button type="button" class="rail__item" (click)="theme.toggle()">
+        <span class="rail__ind">
+          <app-icon [name]="theme.resolved() === 'dark' ? 'sun' : 'moon'" [size]="22" />
+        </span>
+        <span class="rail__label">{{ theme.resolved() === 'dark' ? 'Light' : 'Dark' }}</span>
+      </button>
+    </nav>
+  }
+
+  <main id="main" class="main" [class.main--fill]="fill()" tabindex="-1">
+    @if (locked()) {
+      <app-key-prompt [rejected]="rejected()" (unlock)="unlock($event)" />
+    } @else {
+      @switch (store.state()) {
+        @case ('loading') {
+          <div class="state">
+            <span class="spinner" role="status" aria-label="Loading"></span>
+          </div>
+        }
+        @case ('offline') {
+          <div class="state">
+            <app-empty-state
+              heading="You are offline"
+              body="The app needs a connection to the installation. Check the network or the Raspberry Pi."
+              icon="globe"
+            />
+            <app-button variant="fill" (click)="retry()">Try again</app-button>
+          </div>
+        }
+        @case ('error') {
+          <div class="state">
+            <app-empty-state heading="The data did not load" [body]="store.error()" icon="alert" />
+            <app-button variant="fill" (click)="retry()">Try again</app-button>
+          </div>
+        }
+        @default {
+          <router-outlet />
+        }
+      }
+    }
+  </main>
+
+  @if (phone()) {
+    <nav class="bb" aria-label="Main">
+      @for (item of items; track item.path) {
+        <a
+          class="bb__item"
+          [routerLink]="item.path"
+          routerLinkActive="is-active"
+          ariaCurrentWhenActive="page"
+        >
+          <span class="bb__ind"><app-icon [name]="item.icon" [size]="22" /></span>
+          <span class="bb__label">{{ item.label }}</span>
+        </a>
+      }
+      <button type="button" class="bb__item" (click)="theme.toggle()">
+        <span class="bb__ind">
+          <app-icon [name]="theme.resolved() === 'dark' ? 'sun' : 'moon'" [size]="22" />
+        </span>
+        <span class="bb__label">{{ theme.resolved() === 'dark' ? 'Light' : 'Dark' }}</span>
+      </button>
+    </nav>
+  }
+</div>
+
+<app-toast />

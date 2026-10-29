@@ -1,0 +1,8 @@
+{
+  "$comment": "The dev proxy of `ng serve`. It sends /api to the backend on port 8082 (`python main.py`).",
+  "/api": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

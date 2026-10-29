@@ -1,0 +1,261 @@
+<div class="ae" [class.ae--nested]="nested()">
+  <div class="ae__head">
+    <app-select
+      class="ae__select"
+      label="Animation"
+      placeholder="Select an animation"
+      [clearable]="false"
+      [options]="options()"
+      [value]="name()"
+      [error]="problemAt(path())"
+      (valueChange)="selectAnimation($event)"
+    />
+    @if (removable()) {
+      <app-button
+        variant="text"
+        [iconOnly]="true"
+        ariaLabel="Remove animation"
+        (click)="removed.emit()"
+      >
+        <app-icon name="trash" [size]="20" />
+      </app-button>
+    }
+  </div>
+  @if (info()?.description; as description) {
+    <p class="ae__desc">{{ description }}</p>
+  }
+
+  @if (rows().length) {
+    <div class="ae__params">
+      @for (row of rows(); track row.param.name) {
+        <div class="ae__param">
+          @switch (row.control) {
+            @case ('animation-list') {
+              <span class="ae__label">{{ row.label }}</span>
+              <div class="ae__list">
+                @for (item of listOf(row); track $index; let i = $index) {
+                  <app-animation-editor
+                    [value]="item"
+                    [animations]="animations()"
+                    [presets]="presets()"
+                    [strips]="strips()"
+                    [problems]="problems()"
+                    [path]="row.path + '.' + i"
+                    [nested]="true"
+                    [removable]="true"
+                    (changed)="setItem(row, i, $event)"
+                    (removed)="removeItem(row, i)"
+                  />
+                }
+                <app-button variant="tonal" size="sm" (click)="addAnimation(row)">
+                  <span class="btn-label"><app-icon name="plus" [size]="16" /> Add animation</span>
+                </app-button>
+              </div>
+            }
+            @case ('strip-assignments') {
+              <span class="ae__label">{{ row.label }}</span>
+              <div class="ae__list">
+                @for (item of listOf(row); track $index; let i = $index) {
+                  @let sa = assignmentOf(item);
+                  <div class="ae__group">
+                    <div class="ae__head">
+                      <app-select
+                        class="ae__select"
+                        label="Strip"
+                        [clearable]="false"
+                        [options]="stripOptions()"
+                        [value]="text(sa.strip)"
+                        (valueChange)="setAssignment(row, i, 'strip', +$event)"
+                      />
+                      <app-button
+                        variant="text"
+                        [iconOnly]="true"
+                        ariaLabel="Remove strip assignment"
+                        (click)="removeItem(row, i)"
+                      >
+                        <app-icon name="trash" [size]="20" />
+                      </app-button>
+                    </div>
+                    <ng-container
+                      [ngTemplateOutlet]="colorOrAnimation"
+                      [ngTemplateOutletContext]="{
+                        $implicit: sa.animation,
+                        label: 'Animation',
+                        path: row.path + '.' + i + '.strip_assignment.animation',
+                        set: setAssignmentFn(row, i),
+                      }"
+                    />
+                  </div>
+                }
+                <app-button variant="tonal" size="sm" (click)="addAssignment(row)">
+                  <span class="btn-label"
+                    ><app-icon name="plus" [size]="16" /> Add strip assignment</span
+                  >
+                </app-button>
+              </div>
+            }
+            @case ('color-list') {
+              <span class="ae__label">{{ row.label }}</span>
+              <div class="ae__list">
+                @for (item of listOf(row); track $index; let i = $index) {
+                  <div class="ae__color-row">
+                    <app-color-input
+                      class="ae__grow"
+                      [value]="item"
+                      [label]="row.label + ' ' + (i + 1)"
+                      (changed)="setItem(row, i, $event)"
+                    />
+                    <app-button
+                      variant="text"
+                      [iconOnly]="true"
+                      ariaLabel="Remove color"
+                      (click)="removeItem(row, i)"
+                    >
+                      <app-icon name="trash" [size]="20" />
+                    </app-button>
+                  </div>
+                }
+                <app-button variant="tonal" size="sm" (click)="addColor(row)">
+                  <span class="btn-label"><app-icon name="plus" [size]="16" /> Add color</span>
+                </app-button>
+              </div>
+            }
+            @case ('color-or-animation') {
+              <ng-container
+                [ngTemplateOutlet]="colorOrAnimation"
+                [ngTemplateOutletContext]="{
+                  $implicit: valueOf(row),
+                  label: row.label,
+                  path: row.path,
+                  set: setParamFn(row),
+                }"
+              />
+            }
+            @case ('animation') {
+              <span class="ae__label">{{ row.label }}</span>
+              <app-animation-editor
+                [value]="valueOf(row)"
+                [animations]="animations()"
+                [presets]="presets()"
+                [strips]="strips()"
+                [problems]="problems()"
+                [path]="row.path"
+                [nested]="true"
+                (changed)="setParam(row.param.name, $event)"
+              />
+            }
+            @case ('color') {
+              <span class="ae__label">{{ row.label }}</span>
+              <app-color-input
+                [value]="valueOf(row)"
+                [label]="row.label"
+                (changed)="setParam(row.param.name, $event)"
+              />
+            }
+            @case ('preset') {
+              <app-select
+                [label]="row.label"
+                placeholder="Select a preset"
+                [clearable]="false"
+                [options]="presetOptions()"
+                [value]="text(valueOf(row))"
+                (valueChange)="setParam(row.param.name, $event)"
+              />
+            }
+            @case ('literal') {
+              @if (literalOptions(row).length <= 3) {
+                <span class="ae__label">{{ row.label }}</span>
+                <app-segmented
+                  [ariaLabel]="row.label"
+                  [options]="literalOptions(row)"
+                  [value]="literalValue(row)"
+                  (valueChange)="setParam(row.param.name, $event)"
+                />
+              } @else {
+                <app-select
+                  [label]="row.label"
+                  [clearable]="false"
+                  [options]="literalOptions(row)"
+                  [value]="literalValue(row)"
+                  (valueChange)="setParam(row.param.name, $event)"
+                />
+              }
+            }
+            @case ('bool') {
+              <app-switch
+                [checked]="boolValue(row)"
+                (checkedChange)="setParam(row.param.name, $event)"
+                >{{ row.label }}</app-switch
+              >
+            }
+            @case ('strip') {
+              <app-select
+                [label]="row.label"
+                [clearable]="false"
+                [options]="stripOptions()"
+                [value]="stripValue(row)"
+                (valueChange)="setParam(row.param.name, +$event)"
+              />
+            }
+            @case ('time') {
+              <app-input
+                type="time"
+                [label]="row.label"
+                [ngModel]="text(valueOf(row))"
+                (ngModelChange)="setParam(row.param.name, $event || undefined)"
+              />
+            }
+            @case ('number') {
+              <app-input
+                type="number"
+                [label]="row.label"
+                [placeholder]="defaultText(row)"
+                [hint]="rangeHint(row)"
+                [error]="problemAt(row.path)"
+                [ngModel]="text(valueOf(row))"
+                (ngModelChange)="setNumber(row, $event)"
+                (focusout)="clampNumber(row)"
+              />
+            }
+            @default {
+              <app-input
+                [label]="row.label"
+                [placeholder]="defaultText(row)"
+                [ngModel]="text(valueOf(row))"
+                (ngModelChange)="setParam(row.param.name, $event)"
+              />
+            }
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<ng-template #colorOrAnimation let-value let-label="label" let-path="path" let-set="set">
+  <div class="ae__either">
+    <div class="ae__either-head">
+      <span class="ae__label">{{ label }}</span>
+      <app-segmented
+        [ariaLabel]="label + ': source'"
+        [options]="sourceOptions"
+        [value]="sourceOf(value)"
+        (valueChange)="sourceOf(value) !== $event && set(switchSource($event))"
+      />
+    </div>
+    @if (sourceOf(value) === 'color') {
+      <app-color-input [value]="value" [label]="label" (changed)="set($event)" />
+    } @else {
+      <app-animation-editor
+        [value]="value"
+        [animations]="animations()"
+        [presets]="presets()"
+        [strips]="strips()"
+        [problems]="problems()"
+        [path]="path"
+        [nested]="true"
+        (changed)="set($event)"
+      />
+    }
+  </div>
+</ng-template>

@@ -1,0 +1,96 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.ae {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+// A nested animation: a line at the start edge shows the depth.
+.ae--nested {
+  padding-inline-start: var(--space-4);
+  border-inline-start: 2px solid var(--color-border);
+}
+
+.ae__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.ae__select,
+.ae__grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ae__desc {
+  margin: 0;
+  padding-inline: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+}
+
+.ae__params {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-1);
+}
+
+.ae__param {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ae__label {
+  padding-inline: var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-muted);
+}
+
+.ae__list {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+.ae__list > app-button {
+  align-self: flex-start;
+}
+
+.ae__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-1);
+}
+
+.ae__color-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.ae__either {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ae__either-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}

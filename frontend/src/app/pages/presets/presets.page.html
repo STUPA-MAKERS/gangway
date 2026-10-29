@@ -1,0 +1,115 @@
+<div class="page">
+  <h1 class="page-title">Presets</h1>
+
+  <form class="new" (ngSubmit)="saveCurrent()">
+    <app-input
+      class="new__name"
+      label="New preset"
+      name="newName"
+      [error]="newNameError()"
+      [ngModel]="newName()"
+      (ngModelChange)="newName.set($event)"
+    />
+    <app-button
+      type="submit"
+      variant="fill"
+      [disabled]="busy() || !newName().trim() || !!newNameError()"
+    >
+      <span class="btn-label"><app-icon name="plus" [size]="18" /> Save current</span>
+    </app-button>
+  </form>
+
+  @if (store.presets().length) {
+    <div class="rowgroup" role="list" aria-label="Presets">
+      @for (name of store.presets(); track name) {
+        <app-list-item role="listitem" [title]="name" (activate)="edit(name)">
+          <span trail class="trail">
+            <app-button
+              variant="tonal"
+              size="sm"
+              [disabled]="busy()"
+              [ariaLabel]="'Load ' + name"
+              (click)="load(name)"
+            >
+              <span class="btn-label"><app-icon name="play" [size]="16" /> Load</span>
+            </app-button>
+            <app-row-menu
+              [label]="'Actions for ' + name"
+              [sections]="menu"
+              (selected)="onMenu(name, $event)"
+            />
+          </span>
+        </app-list-item>
+      }
+    </div>
+  } @else {
+    <app-empty-state heading="No presets yet" icon="list" />
+  }
+</div>
+
+<app-dialog
+  size="lg"
+  title="Edit preset"
+  [subtitle]="editing() ?? ''"
+  closeLabel="Close"
+  [open]="editing() !== null"
+  (closed)="editing.set(null)"
+>
+  @if (editing() !== null) {
+    <app-animation-editor
+      [value]="editDraft()"
+      [animations]="store.animations()"
+      [presets]="store.presets()"
+      [strips]="store.config()?.strips ?? []"
+      [problems]="editProblems()"
+      (changed)="editDraft.set($event)"
+    />
+  }
+  <app-button dialog-footer variant="text" (click)="editing.set(null)">Cancel</app-button>
+  <app-button
+    dialog-footer
+    variant="fill"
+    [loading]="busy()"
+    [disabled]="editProblems().length > 0"
+    (click)="saveEdit()"
+    >Apply</app-button
+  >
+</app-dialog>
+
+<app-dialog
+  title="Rename preset"
+  [subtitle]="renaming() ?? ''"
+  closeLabel="Close"
+  [open]="renaming() !== null"
+  (closed)="renaming.set(null)"
+>
+  <form id="rename-form" (ngSubmit)="rename()">
+    <app-input
+      label="New name"
+      name="renameTo"
+      hint="Letters, digits, spaces, hyphens and underscores."
+      [error]="renameError()"
+      [ngModel]="renameTo()"
+      (ngModelChange)="renameTo.set($event)"
+    />
+  </form>
+  <app-button dialog-footer variant="text" (click)="renaming.set(null)">Cancel</app-button>
+  <app-button
+    dialog-footer
+    variant="fill"
+    [loading]="busy()"
+    [disabled]="!renameTo().trim() || !!renameError() || renameTo().trim() === renaming()"
+    (click)="rename()"
+    >Rename</app-button
+  >
+</app-dialog>
+
+<app-confirm-dialog
+  [open]="deleting() !== null"
+  title="Delete the preset?"
+  [subtitle]="deleting() ?? ''"
+  confirmLabel="Delete"
+  [busy]="busy()"
+  (confirm)="remove()"
+  (cancel)="deleting.set(null)"
+/>

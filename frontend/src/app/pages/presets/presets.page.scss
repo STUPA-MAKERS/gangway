@@ -1,0 +1,24 @@
+:host {
+  display: block;
+}
+
+.new {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.new__name {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+// The button lines up with the box of the labelled field (56px).
+.new > app-button {
+  margin-top: 8px;
+}
+
+.trail {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}

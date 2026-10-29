@@ -1,9 +1,9 @@
-.next
-node_modules
+# Build output
+/dist
+/out-tsc
+/.angular
+/coverage
 
-# next-pwa writes the service worker and its helpers into public/ on every build
-public/sw.js
-public/sw.js.map
-public/workbox-*.js
-public/workbox-*.js.map
-public/fallback-*.js
+# Node
+/node_modules
+npm-debug.log

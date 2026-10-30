@@ -143,3 +143,32 @@
   display: flex;
   gap: var(--space-2);
 }
+
+// A phone shows the view without a box: no card and no dark stage. The controls go to
+// the top, where the thumb of a phone reaches them below the status bar.
+:host-context(.frame--phone) {
+  .viz {
+    overflow: visible;
+    border-radius: 0;
+    background: none;
+  }
+  .viz__stage {
+    background: none;
+    color: var(--color-text);
+  }
+  .viz__bar {
+    order: -1;
+    padding: 0 0 var(--space-3);
+  }
+  .viz__stats,
+  .viz__caption {
+    left: 0;
+    color: var(--color-text-muted);
+  }
+  .viz__stats {
+    top: 0;
+  }
+  .viz__caption {
+    bottom: 0;
+  }
+}

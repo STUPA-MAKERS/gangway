@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/angular';
-import { CountChartComponent, niceCeil } from './count-chart.component';
+import type { CountSeries } from '../../core/api/models';
+import { CountChartComponent, chartTicks, niceCeil } from './count-chart.component';
 import { duration } from '../../pages/stats/stats.page';
 
 describe('niceCeil', () => {
@@ -37,5 +38,29 @@ describe('CountChartComponent', () => {
     expect(screen.getByRole('img', { name: 'Persons over time: 7 in, 5 out.' })).toBeTruthy();
     const titles = Array.from(document.querySelectorAll('title')).map((t) => t.textContent);
     expect(titles.some((t) => t?.endsWith(': 4 in, 3 out'))).toBe(true);
+  });
+});
+
+describe('chartTicks', () => {
+  const day: CountSeries = {
+    granularity: 'hour',
+    entered: 0,
+    left: 0,
+    buckets: Array.from({ length: 24 }, (_, h) => ({
+      start: new Date(2026, 9, 30, h).toISOString(),
+      entered: 0,
+      left: 0,
+      occupancy: 0,
+    })),
+  };
+
+  it('labels every third hour on a wide chart', () => {
+    expect(chartTicks(day, 900)).toHaveLength(8);
+  });
+
+  it('leaves at least 56 px between the labels on a narrow chart', () => {
+    const ticks = chartTicks(day, 280);
+    expect(ticks.length).toBeLessThanOrEqual(5);
+    expect(ticks.at(-1)?.at).toBe(chartTicks(day).at(-1)?.at);
   });
 });

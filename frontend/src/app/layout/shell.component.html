@@ -18,12 +18,6 @@
         </a>
       }
       <span class="rail__spacer"></span>
-      @if (keys.key()) {
-        <button type="button" class="rail__item" (click)="forgetKey()">
-          <span class="rail__ind"><app-icon name="key" [size]="22" /></span>
-          <span class="rail__label">Forget key</span>
-        </button>
-      }
       <button type="button" class="rail__item" (click)="theme.toggle()">
         <span class="rail__ind">
           <app-icon [name]="theme.resolved() === 'dark' ? 'sun' : 'moon'" [size]="22" />

@@ -111,12 +111,6 @@ export class ShellComponent {
     this.rejected.set(this.store.state() === 'locked');
   }
 
-  protected async forgetKey(): Promise<void> {
-    this.keys.clear();
-    this.rejected.set(false);
-    await this.store.load();
-  }
-
   protected retry(): void {
     void this.store.load();
   }

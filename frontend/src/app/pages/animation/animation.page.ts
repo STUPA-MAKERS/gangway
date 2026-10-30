@@ -35,22 +35,6 @@ import { VisualizationComponent } from '../../features/visualization/visualizati
         }
       }
       <div class="split__main">
-        <header class="head">
-          <h1 class="page-title">Animation</h1>
-          <div class="head__actions">
-            @if (store.dirty()) {
-              <app-button variant="text" (click)="confirmDiscard.set(true)">Discard</app-button>
-            }
-            <app-button
-              variant="fill"
-              [disabled]="!canSave()"
-              [loading]="store.saving()"
-              (click)="save()"
-            >
-              <span class="btn-label"><app-icon name="check" [size]="18" /> Save</span>
-            </app-button>
-          </div>
-        </header>
         <section class="card-surface" aria-label="Active animation">
           <app-animation-editor
             [value]="store.draft()"
@@ -64,11 +48,36 @@ import { VisualizationComponent } from '../../features/visualization/visualizati
       </div>
     </div>
 
+    @if (store.dirty() || store.saving()) {
+      <div class="fabs">
+        <app-button
+          class="fab-reset"
+          variant="fab"
+          [iconOnly]="true"
+          ariaLabel="Reset"
+          [disabled]="store.saving()"
+          (click)="confirmDiscard.set(true)"
+        >
+          <app-icon name="reset" />
+        </app-button>
+        <app-button
+          variant="fab"
+          [iconOnly]="true"
+          ariaLabel="Save"
+          [disabled]="!canSave() && !store.saving()"
+          [loading]="store.saving()"
+          (click)="save()"
+        >
+          <app-icon name="check" />
+        </app-button>
+      </div>
+    }
+
     <app-confirm-dialog
       [open]="confirmDiscard()"
-      title="Discard the changes?"
+      title="Reset the changes?"
       body="The editor goes back to the saved animation."
-      confirmLabel="Discard"
+      confirmLabel="Reset"
       (confirm)="discard()"
       (cancel)="confirmDiscard.set(false)"
     />
@@ -108,16 +117,31 @@ import { VisualizationComponent } from '../../features/visualization/visualizati
       gap: var(--space-5);
       min-width: 0;
     }
-    .head {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-3);
+    .split__main {
+      padding-bottom: calc(56px + var(--space-6));
     }
-    .head__actions {
+    .fabs {
+      position: fixed;
+      right: var(--space-6);
+      bottom: var(--space-6);
+      z-index: var(--z-sticky);
       display: flex;
-      gap: var(--space-2);
+      gap: var(--space-3);
+      animation: fabs-in var(--motion-fast) var(--ease-enter);
+    }
+    :host-context(.frame--phone) .fabs {
+      right: var(--space-4);
+      bottom: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom) + var(--space-4));
+    }
+    .fab-reset ::ng-deep .btn--fab {
+      background: var(--color-surface-3);
+      color: var(--color-text);
+    }
+    @keyframes fabs-in {
+      from {
+        opacity: 0;
+        transform: translateY(var(--space-3));
+      }
     }
     .card-surface {
       padding: var(--space-5);

@@ -2,6 +2,9 @@
 @use 'press';
 
 :host {
+  // The app has no top header, so a sticky bar sticks at the top edge (as in the
+  // shells of homebox-makers and STUPA-Workflow). The kit default is 64px.
+  --layout-header-height: 0px;
   --rail-width: 96px;
   --bottom-bar-height: 64px;
   --app-top-safe-area: env(safe-area-inset-top, 0px);

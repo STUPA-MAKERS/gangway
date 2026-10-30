@@ -20,19 +20,24 @@ import {
   IconComponent,
   InputComponent,
   ListDetailLayoutComponent,
+  MEDIA,
   ListItemComponent,
   RowMenuComponent,
   type RowMenuItem,
   type RowMenuSection,
+  ScrollFadeDirective,
+  SearchPillComponent,
   SheetBarComponent,
   SheetBarTitleDirective,
+  StickyBarComponent,
   ToastService,
+  mediaQuery,
 } from '@stupa-makers/ui-kit';
 import { ApiService, errorText } from '../../core/api/api.service';
 import type { AnimationConfig } from '../../core/api/models';
 import { ConfigStore } from '../../core/state/config-store.service';
 import { AnimationEditorComponent } from '../../features/animation-editor/animation-editor.component';
-import { validateAnimation } from '../../features/animation-editor/schema';
+import { animationName, validateAnimation } from '../../features/animation-editor/schema';
 
 /** The characters that the backend accepts in a preset name (`validate_preset_name`). */
 export const PRESET_NAME = /^[a-zA-Z0-9 \-_]+$/;
@@ -55,10 +60,12 @@ const SHEET_MENU: RowMenuSection[] = [
 /**
  * The presets as a list with a detail sheet beside it (`app-list-detail`).
  *
- * The list holds the presets. A row opens the preset at `/presets/:name`: the sheet
- * shows the editor of its animation, with Load in the sheet bar. Save and Reset float
- * at the bottom end while the editor has changes. The floating button of the list saves
- * the animation of the editor on the animation page as a new preset.
+ * The list column has a header, a search bar and the presets. The second line of a row
+ * names the outer animation of the preset. The floating button of the list saves the
+ * animation of the editor on the animation page as a new preset.
+ *
+ * A row opens the preset at `/presets/:name`. The sheet has the name and the editor. Load floats at the bottom end, and Reset and Save join it
+ * while the editor has changes.
  *
  * Wide, the list and the sheet sit side by side. Otherwise one shows at a time, and the
  * bar of the layout leads back to the list.
@@ -79,8 +86,11 @@ const SHEET_MENU: RowMenuSection[] = [
     ListDetailLayoutComponent,
     ListItemComponent,
     RowMenuComponent,
+    ScrollFadeDirective,
+    SearchPillComponent,
     SheetBarComponent,
     SheetBarTitleDirective,
+    StickyBarComponent,
   ],
   templateUrl: './presets.page.html',
   styleUrl: './presets.page.scss',
@@ -98,11 +108,32 @@ export class PresetsPage {
   protected readonly sheetMenu = SHEET_MENU;
   protected readonly busy = signal(false);
 
+  protected readonly phone = mediaQuery(MEDIA.phone);
   private readonly layout = viewChild(ListDetailLayoutComponent);
   /** The list and the sheet sit side by side. */
   protected readonly split = computed(() => this.layout()?.collapsed() === false);
 
   protected readonly selected = computed(() => this.name() ?? null);
+
+  /** The search text, and the presets whose name holds it, without regard to case. */
+  protected readonly search = signal('');
+  protected readonly filtered = computed(() => {
+    const query = this.search().trim().toLowerCase();
+    const names = this.store.presets();
+    return query ? names.filter((name) => name.toLowerCase().includes(query)) : names;
+  });
+
+  /** The title of the outer animation of each preset, for the second line of its row. */
+  private readonly animations = signal<ReadonlyMap<string, AnimationConfig>>(new Map());
+  protected readonly summaries = computed(() => {
+    const infos = this.store.animations();
+    const titles = new Map<string, string>();
+    for (const [name, config] of this.animations()) {
+      const key = animationName(config);
+      titles.set(name, key ? (infos.find((a) => a.name === key)?.title ?? key) : 'Color');
+    }
+    return titles;
+  });
 
   /** The saved animation of the open preset, and the draft in its editor. */
   private readonly saved = signal<AnimationConfig | null>(null);
@@ -134,6 +165,10 @@ export class PresetsPage {
     effect(() => {
       const name = this.selected();
       untracked(() => void this.open(name));
+    });
+    effect(() => {
+      const names = this.store.presets();
+      untracked(() => void this.readAll(names));
     });
   }
 
@@ -174,6 +209,7 @@ export class PresetsPage {
     await this.run(async () => {
       await firstValueFrom(this.api.savePreset(name, draft));
       this.saved.set(draft);
+      this.animations.update((all) => new Map(all).set(name, draft));
       this.toast.success(`The preset "${name}" is saved.`);
     }, 'The preset was not saved');
   }
@@ -240,6 +276,20 @@ export class PresetsPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Reads all presets for the second lines of the rows. A preset that fails has none. */
+  private async readAll(names: readonly string[]): Promise<void> {
+    const read = await Promise.all(
+      names.map(async (name) => {
+        try {
+          return [name, (await firstValueFrom(this.api.preset(name))).animation] as const;
+        } catch {
+          return null;
+        }
+      }),
+    );
+    this.animations.set(new Map(read.filter((entry) => entry !== null)));
   }
 
   private async run(action: () => Promise<void>, failure: string): Promise<void> {

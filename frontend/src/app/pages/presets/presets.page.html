@@ -1,27 +1,49 @@
 <div class="pp" [class.pp--split]="split()">
   <app-list-detail [detailOpen]="selected() !== null" (back)="close()">
     <section list class="ld-pane pp__pane" aria-labelledby="pp-title">
-      <h1 id="pp-title" class="page-title pp__title">Presets</h1>
+      <header class="pp__head">
+        <h1 id="pp-title" class="pp__title">Presets</h1>
+      </header>
 
-      <div class="pp__scroll">
-        @if (store.presets().length) {
-          <div class="pp__rows" [class.rowgroup]="!split()" role="list" aria-label="Presets">
-            @for (name of store.presets(); track name) {
-              <app-list-item
-                role="listitem"
-                [title]="name"
-                [link]="['/presets', name]"
-                [selected]="name === selected()"
-              >
-                <app-row-menu
-                  trail
-                  [label]="'Actions for ' + name"
-                  [sections]="rowMenu"
-                  (selected)="onMenu(name, $event)"
-                />
-              </app-list-item>
-            }
-          </div>
+      <app-sticky-bar class="ld-pane__filters">
+        <app-search-pill
+          [size]="phone() ? 'md' : 'lg'"
+          [placeholder]="'Search ' + store.presets().length + ' presets'"
+          label="Search presets"
+          [clearable]="true"
+          [value]="search()"
+          (valueChange)="search.set($event)"
+        />
+      </app-sticky-bar>
+
+      <div class="pp__scroll" appScrollFade="y">
+        @if (filtered().length) {
+          <section class="pp__group" aria-labelledby="pp-group">
+            <h2 id="pp-group" class="sec pp__group-head">
+              Saved <span class="pp__count">{{ filtered().length }}</span>
+            </h2>
+            <div class="pp__rows" [class.rowgroup]="!split()" role="list">
+              @for (name of filtered(); track name) {
+                <app-list-item
+                  role="listitem"
+                  class="pp__row"
+                  [title]="name"
+                  [sub]="summaries().get(name) ?? null"
+                  [link]="['/presets', name]"
+                  [selected]="name === selected()"
+                >
+                  <app-row-menu
+                    trail
+                    [label]="'Actions for ' + name"
+                    [sections]="rowMenu"
+                    (selected)="onMenu(name, $event)"
+                  />
+                </app-list-item>
+              }
+            </div>
+          </section>
+        } @else if (search().trim()) {
+          <app-empty-state heading="No preset matches" body="Try another search." icon="search" />
         } @else {
           <app-empty-state
             heading="No presets yet"
@@ -47,41 +69,37 @@
     <div detail class="pp__detail">
       @if (selected(); as name) {
         <article class="pp__sheet" aria-labelledby="pp-sheet-title">
-          <app-sheet-bar [bleed]="split()">
-            <h2 appSheetBarTitle id="pp-sheet-title" class="pp__sheet-title">{{ name }}</h2>
-            <app-button
-              variant="tonal"
-              [disabled]="busy()"
-              [ariaLabel]="'Load ' + name"
-              (click)="load(name)"
-            >
-              <span class="btn-label"><app-icon name="play" [size]="18" /> Load</span>
-            </app-button>
-            <app-row-menu
-              [label]="'Actions for ' + name"
-              [sections]="sheetMenu"
-              (selected)="onMenu(name, $event)"
-            />
-          </app-sheet-bar>
+          <header class="sheet-head">
+            <app-sheet-bar [bleed]="split()">
+              <h2 appSheetBarTitle id="pp-sheet-title" class="sheet-title">{{ name }}</h2>
+              <app-row-menu
+                [label]="'Actions for ' + name"
+                [sections]="sheetMenu"
+                (selected)="onMenu(name, $event)"
+              />
+            </app-sheet-bar>
+          </header>
 
-          @if (loading()) {
-            <div class="pp__state">
-              <span class="spinner" role="status" aria-label="Loading"></span>
-            </div>
-          } @else {
-            <app-animation-editor
-              [value]="draft()"
-              [animations]="store.animations()"
-              [presets]="store.presets()"
-              [strips]="store.config()?.strips ?? []"
-              [problems]="problems()"
-              (changed)="draft.set($event)"
-            />
-          }
+          <section class="pp__section" aria-label="Animation">
+            @if (loading()) {
+              <div class="pp__state">
+                <span class="spinner" role="status" aria-label="Loading"></span>
+              </div>
+            } @else {
+              <app-animation-editor
+                [value]="draft()"
+                [animations]="store.animations()"
+                [presets]="store.presets()"
+                [strips]="store.config()?.strips ?? []"
+                [problems]="problems()"
+                (changed)="draft.set($event)"
+              />
+            }
+          </section>
         </article>
 
-        @if (dirty() || busy()) {
-          <div class="fabs">
+        <div class="fabs">
+          @if (dirty() || busy()) {
             <app-button
               class="fab-reset"
               variant="fab"
@@ -104,17 +122,28 @@
             >
               <app-icon name="check" />
             </app-button>
-          </div>
-        }
+          }
+          <app-button
+            variant="fab"
+            [iconOnly]="true"
+            [ariaLabel]="'Load ' + name"
+            title="Load"
+            [disabled]="busy()"
+            (click)="load(name)"
+          >
+            <app-icon name="play" />
+          </app-button>
+        </div>
       } @else if (split()) {
-        <app-empty-state
-          class="pp__none"
-          heading="No preset open"
-          body="Pick a preset in the list to edit it."
-          icon="list"
-          shape="card"
-          fill
-        />
+        <div class="pp__none">
+          <app-empty-state
+            plain
+            fill
+            heading="No preset open"
+            body="Pick a preset in the list to edit it."
+            icon="list"
+          />
+        </div>
       }
     </div>
   </app-list-detail>

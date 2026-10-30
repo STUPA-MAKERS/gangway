@@ -85,10 +85,11 @@ body {
 
 // The floating Save and Reset of an editor (the animation page, a preset). They show only
 // while the editor has changes. On a phone they sit above the bottom bar.
+// The buttons keep `--space-4` from the end of the sheet, which ends at the page gutter.
 .fabs {
   position: fixed;
-  right: var(--space-6);
-  bottom: var(--space-6);
+  right: calc(var(--layout-gutter) + var(--space-4));
+  bottom: calc(var(--layout-gutter) + var(--space-4));
   z-index: var(--z-sticky);
   display: flex;
   gap: var(--space-3);
@@ -107,4 +108,36 @@ body {
     opacity: 0;
     transform: translateY(var(--space-3));
   }
+}
+
+// The head of a detail sheet, as in STUPA-Workflow: the title in display size in the sheet
+// bar, a muted line below it, and a rule under both.
+:root {
+  --sheet-head-gap: 10px;
+}
+.sheet-title {
+  margin: 0;
+  font-size: var(--fs-d2);
+  line-height: var(--lh-d2);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-tight);
+  overflow-wrap: anywhere;
+}
+.sheet-line {
+  margin: 0;
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: var(--fs-md);
+  line-height: var(--lh-h3);
+}
+.frame--phone .sheet-title {
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+}
+.sheet-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sheet-head-gap);
+  padding-bottom: 22px;
+  border-bottom: var(--border-width) solid var(--color-border);
 }

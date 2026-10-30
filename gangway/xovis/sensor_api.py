@@ -5,9 +5,10 @@ paths and parameters here come from its web UI. The client sends GET requests
 to a fixed set of read-only paths only, because some other paths of the sensor
 act even on GET (for example ``/api/sensor/reset``), and some need no login.
 
-The sensor counts persons on line 0 ("Ein-/Ausgang"). "Forward" is "in", and
-"backward" is "out". The other line of the sensor only makes the push events,
-and its counts are not persons.
+The sensor counts persons on line 0 ("Ein-/Ausgang"). "Backward" is "in",
+and "forward" is "out", because the line points from the inside to the
+outside. The other line of the sensor only makes the push events, and its
+counts are not persons.
 """
 
 import csv
@@ -44,8 +45,8 @@ class Count:
 
     Attributes:
         start: The start of the bucket, timezone-aware.
-        entered: The persons that crossed the line forward.
-        left: The persons that crossed the line backward.
+        entered: The persons that crossed the line backward (in).
+        left: The persons that crossed the line forward (out).
     """
 
     start: datetime
@@ -111,8 +112,8 @@ def parse_counts(text: str, tz: tzinfo | None = None) -> tuple[Count, ...]:
         return tuple(
             Count(
                 start=datetime.fromtimestamp(int(row["timestamp"]) / 1000, tz or UTC),
-                entered=int(row["forward-count"]),
-                left=int(row["backward-count"]),
+                entered=int(row["backward-count"]),
+                left=int(row["forward-count"]),
             )
             for row in reader
         )

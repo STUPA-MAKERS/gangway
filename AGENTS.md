@@ -14,7 +14,7 @@ Gangway is a Python-based lighting control system for an interactive art install
 - **`server.py`**: Runs a simple HTTP server to receive JSON events from the Xovis sensor (Webhooks).
 - **`model.py`**: Pydantic-style dataclasses for parsing Xovis events (ZoneEntry, ZoneExit, specific object coordinates).
 - **`homographic_projection.py`**: Maps the camera coordinates from Xovis to the physical floor plan coordinates using a homography matrix.
-- **`sensor_api.py`**: Reads the counts (line 0), the status and the heat map from the HTTP API of the sensor, with a short cache. `gangway/api/stats.py` serves them at `/api/stats/`. Read only the fixed paths of this module: some sensor paths reset or reboot the sensor even on GET. Day and hour ranges count real hours in UTC, because a timedelta on an aware time counts on the wall clock.
+- **`sensor_api.py`**: Reads the counts (line 0: backward is in, forward is out), the status and the heat map from the HTTP API of the sensor, with a short cache. `gangway/api/stats.py` serves them at `/api/stats/`. Read only the fixed paths of this module: some sensor paths reset or reboot the sensor even on GET. Day and hour ranges count real hours in UTC, because a timedelta on an aware time counts on the wall clock.
 
 ### 2b. Sound Input (`./gangway/audio/`)
 - **`capture.py`**: `AudioCapture`, a thread that reads the USB microphone (AK5371) with sounddevice. On an error it logs once, publishes `SILENT_AUDIO` and retries every 5 s.

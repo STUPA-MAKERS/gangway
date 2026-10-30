@@ -53,9 +53,13 @@ INFO_XML = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 
 def _csv(start: datetime, rows: list[tuple[int, int]]) -> str:
+    """Make the CSV of the sensor from ``(entered, left)`` rows.
+
+    The sensor writes "out" (forward) before "in" (backward).
+    """
     first = start.astimezone(UTC)
     lines = [
-        f"{int((first + timedelta(hours=i)).timestamp() * 1000)},{a},{b}"
+        f"{int((first + timedelta(hours=i)).timestamp() * 1000)},{b},{a}"
         for i, (a, b) in enumerate(rows)
     ]
     return "timestamp,forward-count,backward-count\n" + "\n".join(lines) + "\n"
@@ -84,12 +88,12 @@ class _Sensor:
 
 
 def test_parse_counts_reads_the_csv_of_the_sensor() -> None:
-    """The CSV gives one count for each hour, in the requested timezone."""
+    """The CSV gives one count for each hour: backward is in, forward is out."""
     text = "timestamp,forward-count,backward-count\n1793358000000,11,10\n"
 
     (count,) = parse_counts(text, BERLIN)
 
-    assert count == Count(datetime(2026, 10, 30, 12, tzinfo=BERLIN), 11, 10)
+    assert count == Count(datetime(2026, 10, 30, 12, tzinfo=BERLIN), 10, 11)
 
 
 def test_parse_counts_refuses_an_error_text() -> None:

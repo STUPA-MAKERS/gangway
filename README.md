@@ -194,7 +194,7 @@ components and the design tokens of the STUPA-MAKERS
 [ui-kit](https://github.com/STUPA-MAKERS/ui-kit), so it has the same look as
 STUPA-Workflow and homebox-makers. It has a light and a dark theme.
 
-The UI has three pages:
+The UI has four pages:
 
 - **Live** shows the strips in their current colors and the detected
   persons. The mapped view draws on the floor plan. The raw view draws on
@@ -207,6 +207,18 @@ The UI has three pages:
   list, with the editor of its animation. The sheet loads, renames and
   deletes the preset. The floating button saves the current animation as
   a new preset.
+- **Statistics** shows the counts of the sensor: the persons that went in
+  and out today, yesterday, this week and in the last 30 days, a chart for
+  24 hours, 7 days or 30 days, the heat map of the walked positions and
+  the health of the sensor.
+
+The statistics come from the HTTP API of the sensor (`/api/stats/...` in
+the backend, `gangway/xovis/sensor_api.py`). The sensor counts the persons
+on its line 0 ("Ein-/Ausgang"). It keeps about 4 months of counts. It
+clears the heat map when it starts. The backend reads only a fixed set of
+paths, because some paths of the sensor change its state even on GET. The
+variables `XOVIS_URL`, `XOVIS_USER` and `XOVIS_PASSWORD` override the
+address and the login of the sensor.
 
 The UI sends its requests with no API key first. Through the SSO tunnel
 nginx adds the key. On the LAN the backend refuses the request, and the UI

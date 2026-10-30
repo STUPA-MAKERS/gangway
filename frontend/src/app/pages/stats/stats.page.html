@@ -1,0 +1,107 @@
+<div class="st">
+  @if (error(); as message) {
+    <app-note kind="error" icon="alert" role="alert"
+      >The sensor did not answer: {{ message }}</app-note
+    >
+  }
+
+  <section class="st__kpis card-surface" aria-label="Totals">
+    @for (kpi of kpis(); track kpi.label) {
+      <div class="st__kpi">
+        <span class="st__kpi-label">{{ kpi.label }}</span>
+        <span class="st__kpi-value num">{{ kpi.total.entered.toLocaleString() }}</span>
+        <span class="st__kpi-sub">in · {{ kpi.total.left.toLocaleString() }} out</span>
+      </div>
+    } @empty {
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="st__kpi" aria-hidden="true">
+          <span class="skel-text st__skel"></span>
+          <span class="skel-text st__skel st__skel--big"></span>
+        </div>
+      }
+    }
+    <div class="st__kpi">
+      <span class="st__kpi-label">Busiest hour today</span>
+      <span class="st__kpi-value num">{{ busiest() }}</span>
+    </div>
+  </section>
+
+  <section class="st__card card-surface" aria-labelledby="st-chart">
+    <header class="st__head">
+      <h2 id="st-chart" class="st__title">Persons</h2>
+      <app-segmented
+        ariaLabel="Time range"
+        [options]="spans"
+        [ngModel]="span()"
+        (ngModelChange)="setSpan($event)"
+      />
+    </header>
+    <div class="st__legend" aria-hidden="true">
+      <span class="st__key st__key--in"></span> In <span class="st__key st__key--out"></span> Out
+      @if (series(); as s) {
+        <span class="st__legend-total num">
+          {{ s.entered.toLocaleString() }} in · {{ s.left.toLocaleString() }} out
+        </span>
+      }
+    </div>
+    @if (series(); as s) {
+      <app-count-chart [series]="s" />
+    } @else {
+      <div class="st__chart-skel skel" aria-label="Loading" role="status"></div>
+    }
+  </section>
+
+  <div class="st__grid">
+    <section class="st__card card-surface" aria-labelledby="st-heat">
+      <header class="st__head">
+        <div>
+          <h2 id="st-heat" class="st__title">Heat map</h2>
+          <p class="st__hint">
+            Where people walked
+            @if (health(); as h) {
+              in the last {{ uptimeText() }}, since the sensor started
+            }
+          </p>
+        </div>
+        <app-button
+          variant="text"
+          [iconOnly]="true"
+          ariaLabel="Load the heat map again"
+          title="Load again"
+          [loading]="heatmapLoading()"
+          (click)="loadHeatmap()"
+        >
+          <app-icon name="redo" />
+        </app-button>
+      </header>
+      @if (heatmapUrl(); as url) {
+        <img
+          class="st__heat"
+          [src]="url"
+          alt="Heat map of the walked positions over the camera image"
+        />
+      } @else {
+        <div class="st__heat st__heat--skel skel" aria-label="Loading" role="status"></div>
+      }
+    </section>
+
+    <section class="st__card card-surface" aria-labelledby="st-sensor">
+      <header class="st__head">
+        <div>
+          <h2 id="st-sensor" class="st__title">Sensor</h2>
+          @if (health(); as h) {
+            <p class="st__hint">{{ h.name }}</p>
+          }
+        </div>
+      </header>
+      <dl class="st__facts">
+        @for (fact of facts(); track fact.label) {
+          <div class="st__fact">
+            <dt>{{ fact.label }}</dt>
+            <dd [class.st__warn]="fact.warn">{{ fact.value }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+  </div>
+</div>

@@ -1,0 +1,160 @@
+// A dashboard as the budget page of STUPA-Workflow: a strip of totals, then cards on
+// surface 1.
+:host {
+  display: block;
+}
+
+.st {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+}
+
+.card-surface {
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-1);
+}
+
+// The totals: one cell for each range, with a rule between the cells.
+.st__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  padding-block: var(--space-4);
+}
+.st__kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-1) var(--space-4);
+}
+.st__kpi + .st__kpi {
+  border-inline-start: var(--border-width) solid var(--color-border);
+}
+.st__kpi-label {
+  color: var(--color-text-muted);
+  font-size: var(--fs-small);
+}
+.st__kpi-value {
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  font-weight: var(--fw-semibold);
+}
+.st__kpi-sub {
+  color: var(--color-text-muted);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+}
+.st__skel {
+  width: 5rem;
+}
+.st__skel--big {
+  width: 3.5rem;
+  height: 1.75rem;
+}
+
+.st__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.st__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.st__title {
+  margin: 0;
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  font-weight: var(--fw-semibold);
+}
+.st__hint {
+  margin: 2px 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--fs-small);
+}
+
+.st__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--fs-small);
+}
+.st__key {
+  width: 10px;
+  height: 10px;
+  margin-inline-start: var(--space-2);
+  border-radius: 2px;
+}
+.st__key:first-child {
+  margin-inline-start: 0;
+}
+.st__key--in {
+  background: var(--color-accent);
+}
+.st__key--out {
+  background: var(--color-info);
+}
+.st__legend-total {
+  margin-inline-start: auto;
+}
+.st__chart-skel {
+  height: 220px;
+  border-radius: var(--radius-lg);
+}
+
+.st__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: var(--space-5);
+}
+
+.st__heat {
+  display: block;
+  width: 100%;
+  aspect-ratio: 640 / 398;
+  border-radius: var(--radius-lg);
+  object-fit: cover;
+}
+.st__heat--skel {
+  height: auto;
+}
+
+.st__facts {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+.st__fact {
+  display: grid;
+  grid-template-columns: minmax(8rem, 40%) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+.st__fact dt {
+  color: var(--color-text-muted);
+}
+.st__fact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.st__warn {
+  color: var(--color-warning);
+  font-weight: var(--fw-semibold);
+}
+
+:host-context(.frame--phone) .card-surface {
+  padding: var(--space-4);
+}
+:host-context(.frame--phone) .st__kpi + .st__kpi {
+  border-inline-start: none;
+}

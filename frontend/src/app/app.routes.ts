@@ -33,6 +33,11 @@ export const routes: Routes = [
         data: { fill: true },
         loadComponent: () => import('./pages/presets/presets.page').then((m) => m.PresetsPage),
       },
+      {
+        path: 'stats',
+        title: 'Statistics · Gangway',
+        loadComponent: () => import('./pages/stats/stats.page').then((m) => m.StatsPage),
+      },
       { path: '**', redirectTo: 'live' },
     ],
   },

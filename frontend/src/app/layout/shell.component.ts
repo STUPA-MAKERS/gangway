@@ -41,6 +41,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { path: '/live', label: 'Live', icon: 'monitor' },
   { path: '/animation', label: 'Animation', icon: 'palette' },
   { path: '/presets', label: 'Presets', icon: 'list' },
+  { path: '/stats', label: 'Statistics', icon: 'pie' },
 ];
 
 /**

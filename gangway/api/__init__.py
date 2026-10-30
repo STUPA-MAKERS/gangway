@@ -6,7 +6,7 @@ All routes need the API key in the ``X-API-Key`` header.
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import animations, config, data, presets, visualization
+from . import animations, config, data, presets, stats, visualization
 from .security import get_api_key
 
 app = FastAPI()
@@ -31,3 +31,4 @@ app.include_router(
     animations.router, prefix="/api/animations", dependencies=dependencies
 )
 app.include_router(presets.router, prefix="/api/presets", dependencies=dependencies)
+app.include_router(stats.router, prefix="/api/stats", dependencies=dependencies)

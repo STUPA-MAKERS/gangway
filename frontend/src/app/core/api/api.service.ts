@@ -5,11 +5,15 @@ import type {
   AnimationConfig,
   AnimationInfo,
   AudioData,
+  CountSeries,
+  CountSpan,
+  CountSummary,
   FloorPoint,
   FpsData,
   GangwayConfig,
   LedColors,
   Preset,
+  SensorHealth,
 } from './models';
 
 /** The endpoints of the backend API. All paths go through nginx below `/api/`. */
@@ -82,6 +86,24 @@ export class ApiService {
 
   audio(): Observable<AudioData> {
     return this.http.get<AudioData>('/api/data/audio');
+  }
+
+  /** The persons that went in and out of the gangway, over a range that ends now. */
+  counts(span: CountSpan): Observable<CountSeries> {
+    return this.http.get<CountSeries>('/api/stats/counts', { params: { span } });
+  }
+
+  countSummary(): Observable<CountSummary> {
+    return this.http.get<CountSummary>('/api/stats/summary');
+  }
+
+  sensorHealth(): Observable<SensorHealth> {
+    return this.http.get<SensorHealth>('/api/stats/health');
+  }
+
+  /** The heat map of the sensor as a PNG, for an `<img>` through the key interceptor. */
+  heatmap(): Observable<Blob> {
+    return this.http.get('/api/stats/heatmap', { responseType: 'blob' });
   }
 
   homography(): Observable<{ matrix: number[][] }> {

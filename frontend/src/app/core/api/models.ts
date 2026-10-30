@@ -103,3 +103,55 @@ export interface FloorPoint {
 
 /** The colors of all LEDs, by LED index. */
 export type LedColors = Record<string, Rgbcct>;
+
+/** The persons in one time bucket of the sensor (`Bucket`). */
+export interface CountBucket {
+  /** The start of the bucket, ISO 8601 with offset. */
+  start: string;
+  entered: number;
+  left: number;
+}
+
+/** A time series of the persons (`GET /api/stats/counts`). */
+export interface CountSeries {
+  granularity: 'hour' | 'day';
+  buckets: CountBucket[];
+  entered: number;
+  left: number;
+}
+
+/** The persons in a time range. */
+export interface CountTotal {
+  entered: number;
+  left: number;
+}
+
+/** The totals for the overview (`GET /api/stats/summary`). */
+export interface CountSummary {
+  today: CountTotal;
+  yesterday: CountTotal;
+  week: CountTotal;
+  last_30_days: CountTotal;
+  /** The start of the busiest hour of today, or null if nobody crossed today. */
+  busiest_hour: string | null;
+}
+
+/** The health of the sensor (`GET /api/stats/health`). */
+export interface SensorHealth {
+  name: string;
+  software: string;
+  device: string;
+  /** Seconds since the last start of the sensor. */
+  uptime: number;
+  temperature_die: number | null;
+  temperature_housing: number | null;
+  illumination_ok: boolean;
+  mode: string;
+  push_last_successful: string | null;
+  push_successful: number;
+  push_failed: number;
+  ntp_active: boolean;
+}
+
+/** The time range of the count chart. */
+export type CountSpan = 'day' | 'week' | 'month';

@@ -49,6 +49,9 @@ const DATA_INTERVAL_MS = 50;
 const IMAGE_INTERVAL_MS = 200;
 /** The wait after a failed camera image. */
 const IMAGE_RETRY_MS = 5000;
+/** The gray level of an unlit LED. */
+const UNLIT = 0x30;
+
 /** The squared floor distance in which the pointer selects a strip. */
 const HOVER_DISTANCE2 = 100;
 
@@ -92,6 +95,14 @@ export class VisualizationComponent {
   protected readonly imageDims = signal({ width: 0, height: 0 });
   protected readonly scale = signal(1);
   protected readonly hovered = signal<number | null>(null);
+  /** The strip under the pointer, with its number and its first and last LED. */
+  protected readonly hoveredStrip = computed(() => {
+    const i = this.hovered();
+    const strip = i === null ? undefined : this.strips()[i];
+    return i === null || !strip
+      ? null
+      : { number: i + 1, first: strip.index, last: strip.index + strip.len - 1 };
+  });
   private readonly homography = signal<Matrix3 | null>(null);
   private readonly inverse = computed(() => {
     const h = this.homography();
@@ -308,56 +319,53 @@ export class VisualizationComponent {
       for (let i = 0; i < strip.len; i++) {
         const c = this.leds[strip.index + i];
         const stop = i / (strip.len - 1 || 1);
-        if (c) {
-          const white = c.cw + c.ww;
-          grad.addColorStop(
-            stop,
-            `rgb(${Math.min(255, c.r + white)},${Math.min(255, c.g + white)},${Math.min(255, c.b + white)})`,
-          );
-        } else {
-          grad.addColorStop(stop, '#111');
-        }
+        // An unlit LED shows as the dark gray of the strip, not as black on black.
+        const white = c ? c.cw + c.ww : 0;
+        const channel = (v: number) => Math.min(255, UNLIT + v + white);
+        grad.addColorStop(
+          stop,
+          c
+            ? `rgb(${channel(c.r)},${channel(c.g)},${channel(c.b)})`
+            : `rgb(${UNLIT},${UNLIT},${UNLIT})`,
+        );
       }
 
       let width = 4;
       if (raw && inv) {
-        const z =
-          inv[2][0] * ((sx + ex) / 2) + inv[2][1] * (floorH - (sy + ey) / 2) + inv[2][2];
+        const z = inv[2][0] * ((sx + ex) / 2) + inv[2][1] * (floorH - (sy + ey) / 2) + inv[2][2];
         width = Math.max(1, Math.min(10, 2.5 / (z || 1)));
       }
 
-      ctx.lineCap = 'round';
+      // Flat lines. The strip under the pointer gets a plain lighter edge, no glow.
+      ctx.lineCap = 'butt';
       if (hovered === idx) {
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = 'white';
-        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
         ctx.lineWidth = width + 4;
         line(ctx, x1, y1, x2, y2);
-        ctx.shadowBlur = 0;
       }
-      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = width + 1.5;
-      line(ctx, x1, y1, x2, y2);
       ctx.strokeStyle = grad;
       ctx.lineWidth = width;
       line(ctx, x1, y1, x2, y2);
+
+      ctx.font = `${raw ? 11 : 9}px system-ui, sans-serif`;
+      ctx.fillStyle = hovered === idx ? '#fff' : 'rgba(255,255,255,0.45)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const [lx, ly] = labelPoint(x1, y1, x2, y2, width + 8);
+      ctx.fillText(String(idx + 1), lx, ly);
     });
 
     if (this.showObjects()) {
-      ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 1;
+      ctx.fillStyle = '#e5484d';
       for (const obj of this.objects) {
         const [ox, oy] = toCanvas(obj.x, obj.y);
         ctx.beginPath();
-        ctx.arc(ox, oy, 6, 0, Math.PI * 2);
+        ctx.arc(ox, oy, 5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
       }
     }
 
-    // Only a change of the hit under the pointer sets the strip. A strip that the legend
-    // selected stays selected while the pointer does not move to another strip.
+    // Only a change of the hit under the pointer sets the strip.
     if (hover !== this.lastHover) {
       this.lastHover = hover;
       this.hovered.set(hover);
@@ -376,7 +384,10 @@ export class VisualizationComponent {
     const el = this.container().nativeElement;
     if (!raw) {
       const s = this.scale();
-      return [(x - el.clientWidth / 2) / s + floorW / 2, (y - el.clientHeight / 2) / s + floorH / 2];
+      return [
+        (x - el.clientWidth / 2) / s + floorW / 2,
+        (y - el.clientHeight / 2) / s + floorH / 2,
+      ];
     }
     const dims = this.imageDims();
     if (dims.width <= 0 || !h) return [-1000, -1000];
@@ -393,6 +404,12 @@ function line(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number,
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
+}
+
+/** A point before the start of a line, `gap` away along its direction, for its label. */
+function labelPoint(x1: number, y1: number, x2: number, y2: number, gap: number): [number, number] {
+  const length = Math.hypot(x2 - x1, y2 - y1) || 1;
+  return [x1 - ((x2 - x1) / length) * gap, y1 - ((y2 - y1) / length) * gap];
 }
 
 function sleep(ms: number): Promise<void> {

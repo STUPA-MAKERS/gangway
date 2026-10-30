@@ -7,10 +7,9 @@
   >
     @if (stats(); as s) {
       @if (visible()) {
-        <dl class="viz__stats" aria-label="Rates">
-          <div><dt>RPS</dt><dd>{{ s.fps }}</dd></div>
-          <div><dt>UPS</dt><dd>{{ s.ups }}</dd></div>
-        </dl>
+        <p class="viz__stats" aria-label="Rates">
+          {{ s.fps.toFixed(0) }} frames/s · {{ s.ups }} sensor updates/s
+        </p>
       }
     }
 
@@ -18,22 +17,9 @@
       <app-audio-meter class="viz__audio" />
     }
 
-    <ul class="viz__legend" [class.viz__legend--on]="visible()" aria-label="Strips">
-      @for (s of strips(); track $index; let i = $index) {
-        <li
-          class="viz__strip"
-          [class.viz__strip--on]="hovered() === i"
-          (pointerenter)="hovered.set(i)"
-          (pointerleave)="hovered.set(null)"
-        >
-          <span class="viz__dot" aria-hidden="true"></span>
-          <span>Strip {{ i + 1 }}</span>
-          @if (hovered() === i) {
-            <span class="viz__meta">idx {{ s.index }} · len {{ s.len }}</span>
-          }
-        </li>
-      }
-    </ul>
+    @if (visible() && hoveredStrip(); as h) {
+      <p class="viz__caption">Strip {{ h.number }} · LEDs {{ h.first }}–{{ h.last }}</p>
+    }
 
     <div
       class="viz__floor"

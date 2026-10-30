@@ -17,8 +17,8 @@ import threading
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta, tzinfo
-from itertools import groupby
+from datetime import UTC, date, datetime, timedelta, tzinfo
+from itertools import accumulate, groupby
 from typing import Final
 from xml.etree import ElementTree
 
@@ -194,6 +194,49 @@ def bucket(
         Count(start, sum(c.entered for c in group), sum(c.left for c in group))
         for start, group in groups
     )
+
+
+EMPTY_HOUR: Final = 4
+"""The local hour at which the room is assumed to be empty, for `occupancy`."""
+
+
+def occupancy_day(moment: datetime) -> date:
+    """Get the day of a time for `occupancy`, which starts at `EMPTY_HOUR`.
+
+    Args:
+        moment: The time, in the local timezone.
+
+    Returns:
+        The date of the occupancy day. The hours before `EMPTY_HOUR` belong to
+        the day before.
+    """
+    return (moment - timedelta(hours=EMPTY_HOUR)).date()
+
+
+def occupancy(counts: Iterable[Count]) -> tuple[int, ...]:
+    """Estimate the persons in the room at the end of each hour.
+
+    The estimate adds the persons that went in and takes away the persons
+    that went out. It never goes below 0, and it starts at 0 at
+    `EMPTY_HOUR` each day, so a missed crossing does not stay. Within an
+    hour, a person who goes in and out again does not count.
+
+    Args:
+        counts: The hourly counts, sorted by start.
+
+    Returns:
+        The estimate for each count, in the same order.
+    """
+
+    def step(acc: tuple[date | None, int], count: Count) -> tuple[date | None, int]:
+        day, inside = acc
+        today = occupancy_day(count.start)
+        base = inside if today == day else 0
+        return today, max(0, base + count.entered - count.left)
+
+    return tuple(
+        inside for _day, inside in accumulate(counts, step, initial=(None, 0))
+    )[1:]
 
 
 def total(counts: Iterable[Count], since: datetime, until: datetime) -> tuple[int, int]:

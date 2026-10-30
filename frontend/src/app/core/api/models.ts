@@ -110,6 +110,8 @@ export interface CountBucket {
   start: string;
   entered: number;
   left: number;
+  /** The estimate of the persons in the room: at the end of an hour, or the peak of a day. */
+  occupancy: number;
 }
 
 /** A time series of the persons (`GET /api/stats/counts`). */
@@ -132,8 +134,10 @@ export interface CountSummary {
   yesterday: CountTotal;
   week: CountTotal;
   last_30_days: CountTotal;
-  /** The start of the busiest hour of today, or null if nobody crossed today. */
-  busiest_hour: string | null;
+  /** All counts that the sensor keeps (about 4 months). */
+  all_time: CountTotal;
+  /** The estimate of the persons in the room now. */
+  in_room: number;
 }
 
 /** The health of the sensor (`GET /api/stats/health`). */

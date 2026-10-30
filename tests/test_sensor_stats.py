@@ -14,6 +14,7 @@ from gangway.xovis.sensor_api import (
     SensorClient,
     SensorError,
     bucket,
+    occupancy,
     parse_counts,
     parse_status,
     start_of_day,
@@ -155,7 +156,6 @@ def test_summary_for_sums_today_and_the_week() -> None:
     assert summary["today"] == {"entered": 16, "left": 16}
     assert summary["yesterday"] == {"entered": 24, "left": 24}
     assert summary["week"] == {"entered": 4 * 24 + 16, "left": 4 * 24 + 16}
-    assert summary["busiest_hour"] == "2026-10-30T00:00:00+01:00"
 
 
 def test_client_caches_a_request() -> None:
@@ -182,12 +182,12 @@ def test_client_reports_an_unreachable_sensor() -> None:
         SensorClient(fetch=offline).status()
 
 
-def test_prepare_heatmap_crops_the_frame_and_mirrors_the_picture() -> None:
-    """The transparent frame goes away, and left and right change places."""
+def test_prepare_heatmap_crops_the_frame_and_turns_the_picture() -> None:
+    """The transparent frame goes away, and the picture turns by 180 degrees."""
     image = np.zeros((6, 8, 4), np.uint8)
     image[:, :, :3] = 255
     image[1:5, 2:6] = (0, 0, 255, 255)
-    image[1:5, 2] = (255, 0, 0, 255)
+    image[1, 2] = (255, 0, 0, 255)
     png = cv2.imencode(".png", image)[1].tobytes()
 
     result = cv2.imdecode(
@@ -197,5 +197,40 @@ def test_prepare_heatmap_crops_the_frame_and_mirrors_the_picture() -> None:
     assert result is not None
     pixels: list[list[list[int]]] = result.tolist()
     assert result.shape == (4, 4, 3)
-    assert pixels[0][3] == [255, 0, 0]
+    assert pixels[3][3] == [255, 0, 0]
     assert pixels[0][0] == [0, 0, 255]
+
+
+def test_occupancy_adds_in_takes_out_and_never_goes_below_zero() -> None:
+    """More persons out than in keeps the estimate at 0."""
+    start = datetime(2026, 10, 30, 10, tzinfo=BERLIN)
+    hourly = parse_counts(_csv(start, [(5, 1), (2, 3), (0, 9), (4, 0)]), BERLIN)
+
+    assert occupancy(hourly) == (4, 3, 0, 4)
+
+
+def test_occupancy_starts_at_zero_at_four_in_the_morning() -> None:
+    """A person who was not counted out does not stay in the next day."""
+    start = datetime(2026, 10, 30, 2, tzinfo=BERLIN)
+    hourly = parse_counts(_csv(start, [(3, 0), (0, 0), (1, 0)]), BERLIN)
+
+    assert occupancy(hourly) == (3, 3, 1)
+
+
+def test_counts_for_days_gives_the_peak_of_the_estimate() -> None:
+    """A day bucket holds the highest hourly estimate of its day."""
+    now = datetime(2026, 10, 30, 15, 30, tzinfo=BERLIN)
+
+    counts = counts_for(SensorClient(fetch=_Sensor()), "month", now)
+
+    assert all(b["occupancy"] == 0 for b in counts["buckets"])
+
+
+def test_summary_has_all_time_and_the_room_estimate() -> None:
+    """All time sums every hour of the sensor."""
+    now = datetime(2026, 10, 30, 15, 30, tzinfo=BERLIN)
+
+    summary = summary_for(SensorClient(fetch=_Sensor(per_hour=2)), now)
+
+    assert summary["all_time"]["entered"] > summary["last_30_days"]["entered"]
+    assert summary["in_room"] == 0

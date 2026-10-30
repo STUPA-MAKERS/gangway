@@ -208,9 +208,15 @@ The UI has four pages:
   deletes the preset. The floating button saves the current animation as
   a new preset.
 - **Statistics** shows the counts of the sensor: the persons that went in
-  and out today, yesterday, this week and in the last 30 days, a chart for
-  24 hours, 7 days or 30 days, the heat map of the walked positions and
-  the health of the sensor.
+  and out today, yesterday, this week, in the last 30 days and in all the
+  history of the sensor, a chart for 24 hours, 7 days or 30 days, the
+  estimate of the persons in the room, the heat map of the walked
+  positions and the health of the sensor.
+
+The sensor counts only the crossings of the entrance. The estimate of the
+persons in the room adds the persons in and takes away the persons out,
+hour by hour. It never goes below 0, and it starts at 0 each morning at
+04:00, so a missed crossing does not stay.
 
 The statistics come from the HTTP API of the sensor (`/api/stats/...` in
 the backend, `gangway/xovis/sensor_api.py`). The sensor counts the persons

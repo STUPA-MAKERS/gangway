@@ -13,7 +13,7 @@ interface Bar {
   title: string;
 }
 
-interface Tick {
+export interface Tick {
   /** The position from the start edge in percent. */
   at: number;
   label: string;
@@ -160,18 +160,7 @@ export class CountChartComponent {
     }));
   });
 
-  protected readonly ticks = computed<Tick[]>(() => {
-    const { buckets, granularity } = this.series();
-    const n = buckets.length;
-    const every = tickStep(n, granularity);
-    return buckets
-      .map((bucket, i) => ({ bucket, i }))
-      .filter(({ bucket, i }) => isTick(bucket, i, every, granularity, n))
-      .map(({ bucket, i }) => ({
-        at: ((i + 0.5) / n) * 100,
-        label: tickLabel(bucket, granularity, n),
-      }));
-  });
+  protected readonly ticks = computed(() => chartTicks(this.series()));
 
   protected readonly label = computed(() => {
     const { entered, left } = this.series();
@@ -188,6 +177,20 @@ export function niceCeil(value: number): number {
   const power = 10 ** Math.floor(Math.log10(value));
   const step = [1, 2, 5, 10].find((f) => f * power >= value) ?? 10;
   return step * power;
+}
+
+/** The labels below a chart of the series: hours, weekdays or dates. */
+export function chartTicks(series: CountSeries): Tick[] {
+  const { buckets, granularity } = series;
+  const n = buckets.length;
+  const every = tickStep(n, granularity);
+  return buckets
+    .map((bucket, i) => ({ bucket, i }))
+    .filter(({ bucket, i }) => isTick(bucket, i, every, granularity, n))
+    .map(({ bucket, i }) => ({
+      at: ((i + 0.5) / n) * 100,
+      label: tickLabel(bucket, granularity, n),
+    }));
 }
 
 function tickStep(n: number, granularity: CountSeries['granularity']): number {
@@ -230,7 +233,8 @@ function tickLabel(
   return n > 48 ? WEEKDAY.format(date) : HOUR.format(date);
 }
 
-function bucketLabel(bucket: CountBucket, granularity: CountSeries['granularity']): string {
+/** The time of a bucket for a tooltip. */
+export function bucketLabel(bucket: CountBucket, granularity: CountSeries['granularity']): string {
   const date = new Date(bucket.start);
   return granularity === 'day' ? FULL.format(date) : `${FULL.format(date)} ${HOUR.format(date)}`;
 }

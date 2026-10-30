@@ -2,6 +2,7 @@
 
 import os
 from datetime import datetime, timedelta
+from itertools import groupby
 from typing import Final, Literal, TypedDict
 from zoneinfo import ZoneInfo
 
@@ -11,12 +12,14 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
 from ..xovis.sensor_api import (
+    EMPTY_HOUR,
     SENSOR,
     Count,
     SensorClient,
     SensorError,
     bucket,
     hours_before,
+    occupancy,
     start_of_day,
     start_of_hour,
     start_of_week,
@@ -30,6 +33,10 @@ TIMEZONE: Final = ZoneInfo(os.getenv("GANGWAY_TIMEZONE", "Europe/Berlin"))
 
 type Range = Literal["day", "week", "month"]
 
+HISTORY: Final = timedelta(days=365)
+"""The longest history to ask for. The sensor keeps about 4 months, and it
+gives only the hours that it has."""
+
 
 class Bucket(TypedDict):
     """The persons in one time bucket.
@@ -38,11 +45,14 @@ class Bucket(TypedDict):
         start: The start of the bucket, as ISO 8601 with offset.
         entered: The persons that went in.
         left: The persons that went out.
+        occupancy: The estimate of the persons in the room (see `occupancy`):
+            at the end of an hour bucket, or the peak of a day bucket.
     """
 
     start: str
     entered: int
     left: int
+    occupancy: int
 
 
 class Counts(TypedDict):
@@ -81,15 +91,16 @@ class Summary(TypedDict):
         yesterday: The day before today.
         week: Since Monday midnight.
         last_30_days: The last 30 days, today included.
-        busiest_hour: The start of the hour of today with the most crossings,
-            or None if nobody crossed today.
+        all_time: All counts that the sensor keeps.
+        in_room: The estimate of the persons in the room now.
     """
 
     today: Total
     yesterday: Total
     week: Total
     last_30_days: Total
-    busiest_hour: str | None
+    all_time: Total
+    in_room: int
 
 
 class Health(TypedDict):
@@ -124,11 +135,12 @@ class Health(TypedDict):
     ntp_active: bool
 
 
-def _bucket_json(count: Count) -> Bucket:
+def _bucket_json(count: Count, inside: int) -> Bucket:
     return {
         "start": count.start.isoformat(),
         "entered": count.entered,
         "left": count.left,
+        "occupancy": inside,
     }
 
 
@@ -164,13 +176,28 @@ def counts_for(client: SensorClient, span: Range, now: datetime) -> Counts:
             since, granularity = hours_before(start_of_hour(now), 7 * 24 - 1), "hour"
         case "month":
             since, granularity = start_of_day(now) - timedelta(days=29), "day"
-    hourly = _hourly(client, since, now)
-    series = bucket(hourly, start_of_day) if granularity == "day" else hourly
+    # The estimate starts at 0 on each morning, so it needs the hours since
+    # the morning before the range.
+    morning = start_of_day(hours_before(since, EMPTY_HOUR)) + timedelta(
+        hours=EMPTY_HOUR
+    )
+    hourly = _hourly(client, min(since, morning), now)
+    inside = dict(zip(hourly, occupancy(hourly), strict=True))
+    shown = tuple(c for c in hourly if c.start >= since)
+    if granularity == "hour":
+        buckets = [_bucket_json(c, inside[c]) for c in shown]
+    else:
+        days = bucket(shown, start_of_day)
+        peaks = {
+            day: max(inside[c] for c in group)
+            for day, group in groupby(shown, key=lambda c: start_of_day(c.start))
+        }
+        buckets = [_bucket_json(day, peaks[day.start]) for day in days]
     return {
         "granularity": granularity,
-        "buckets": [_bucket_json(count) for count in series],
-        "entered": sum(c.entered for c in series),
-        "left": sum(c.left for c in series),
+        "buckets": buckets,
+        "entered": sum(c.entered for c in shown),
+        "left": sum(c.left for c in shown),
     }
 
 
@@ -182,25 +209,22 @@ def summary_for(client: SensorClient, now: datetime) -> Summary:
         now: The current time, timezone-aware.
 
     Returns:
-        The totals of today, yesterday, this week and the last 30 days.
+        The totals of today, yesterday, this week, the last 30 days and all
+        time, and the estimate of the persons in the room now.
     """
     today = start_of_day(now)
     week = start_of_week(now)
     month = today - timedelta(days=29)
     yesterday = start_of_day(today - timedelta(hours=12))
-    hourly = _hourly(client, min(week, month, yesterday), now)
+    hourly = _hourly(client, start_of_day(now - HISTORY), now)
     end = now + timedelta(hours=1)
-    busiest = max(
-        (c for c in hourly if c.start >= today and c.entered + c.left > 0),
-        key=lambda c: c.entered + c.left,
-        default=None,
-    )
     return {
         "today": _total_json(total(hourly, today, end)),
         "yesterday": _total_json(total(hourly, yesterday, today)),
         "week": _total_json(total(hourly, week, end)),
         "last_30_days": _total_json(total(hourly, month, end)),
-        "busiest_hour": busiest.start.isoformat() if busiest else None,
+        "all_time": _total_json(total(hourly, hourly[0].start if hourly else now, end)),
+        "in_room": occupancy(hourly)[-1] if hourly else 0,
     }
 
 
@@ -219,7 +243,7 @@ def get_counts(span: Range = "day") -> Counts:
 
 @router.get("/summary")
 def get_summary() -> Summary:
-    """Get the totals of today, yesterday, this week and the last 30 days.
+    """Get the totals and the estimate of the persons in the room.
 
     Returns:
         The totals.
@@ -259,14 +283,15 @@ def prepare_heatmap(png: bytes) -> bytes:
 
     The sensor puts the picture on a transparent frame. A browser shows the
     frame in the color of the page, so the function crops it away. The
-    picture of the sensor is mirrored left to right, compared with the
-    floor plan.
+    picture of the sensor is upside down, compared with the floor plan, so
+    the function turns it by 180 degrees, as the live view does with the
+    camera image.
 
     Args:
         png: The PNG of the sensor.
 
     Returns:
-        The cropped and mirrored PNG, without transparency.
+        The cropped and turned PNG, without transparency.
 
     Raises:
         HTTPException: 502 if the data is not an image, 500 if the result
@@ -280,7 +305,7 @@ def prepare_heatmap(png: bytes) -> bytes:
         if len(xs):
             image = image[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1]
         image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
-    ok, encoded = cv2.imencode(".png", cv2.flip(image, 1))
+    ok, encoded = cv2.imencode(".png", cv2.flip(image, -1))
     if not ok:
         raise HTTPException(status_code=500, detail="The heat map was not encoded.")
     return encoded.tobytes()

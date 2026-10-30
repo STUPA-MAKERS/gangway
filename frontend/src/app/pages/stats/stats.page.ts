@@ -26,6 +26,7 @@ import type {
   SensorHealth,
 } from '../../core/api/models';
 import { CountChartComponent } from '../../features/count-chart/count-chart.component';
+import { OccupancyChartComponent } from '../../features/count-chart/occupancy-chart.component';
 
 /** The time between two reads of the counts. The sensor sums them by hour. */
 const COUNTS_MS = 60_000;
@@ -51,7 +52,11 @@ interface Fact {
 
 /**
  * The statistics of the people counter (Xovis sensor): totals, the persons over time,
- * the heat map and the health of the sensor.
+ * the estimate of the persons in the room, the heat map and the health of the sensor.
+ *
+ * The sensor counts crossings of the entrance line only. The estimate in the room adds
+ * the persons in and takes away the persons out, from 0 each morning (see
+ * `gangway/xovis/sensor_api.py`). The page calls it an estimate.
  *
  * The backend reads the sensor (`/api/stats/...`) and caches the answers, because the
  * sensor is slow for the heat map. The page reads the counts each minute and the health
@@ -67,6 +72,7 @@ interface Fact {
     CountChartComponent,
     IconComponent,
     NoteComponent,
+    OccupancyChartComponent,
     SegmentedComponent,
   ],
   templateUrl: './stats.page.html',
@@ -93,12 +99,8 @@ export class StatsPage {
       { label: 'Yesterday', total: s.yesterday },
       { label: 'This week', total: s.week },
       { label: 'Last 30 days', total: s.last_30_days },
+      { label: 'All time', total: s.all_time },
     ];
-  });
-
-  protected readonly busiest = computed(() => {
-    const start = this.summary()?.busiest_hour;
-    return start ? hourRange(new Date(start)) : '–';
   });
 
   protected readonly uptimeText = computed(() => duration(this.health()?.uptime ?? 0));
@@ -201,17 +203,6 @@ export class StatsPage {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-const HOUR = new Intl.DateTimeFormat(undefined, {
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-});
-
-function hourRange(start: Date): string {
-  const end = new Date(start.getTime() + 3_600_000);
-  return `${HOUR.format(start)}–${HOUR.format(end)}`;
 }
 
 /** A duration in seconds as days and hours, or hours and minutes. */

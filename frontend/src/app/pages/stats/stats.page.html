@@ -6,6 +6,13 @@
   }
 
   <section class="st__kpis card-surface" aria-label="Totals">
+    @if (summary(); as s) {
+      <div class="st__kpi">
+        <span class="st__kpi-label">In the room now</span>
+        <span class="st__kpi-value num">≈ {{ s.in_room }}</span>
+        <span class="st__kpi-sub">estimate from in and out</span>
+      </div>
+    }
     @for (kpi of kpis(); track kpi.label) {
       <div class="st__kpi">
         <span class="st__kpi-label">{{ kpi.label }}</span>
@@ -20,10 +27,6 @@
         </div>
       }
     }
-    <div class="st__kpi">
-      <span class="st__kpi-label">Busiest hour today</span>
-      <span class="st__kpi-value num">{{ busiest() }}</span>
-    </div>
   </section>
 
   <section class="st__card card-surface" aria-labelledby="st-chart">
@@ -48,6 +51,25 @@
       <app-count-chart [series]="s" />
     } @else {
       <div class="st__chart-skel skel" aria-label="Loading" role="status"></div>
+    }
+  </section>
+
+  <section class="st__card card-surface" aria-labelledby="st-room">
+    <header class="st__head">
+      <div>
+        <h2 id="st-room" class="st__title">In the room</h2>
+        <p class="st__hint">
+          An estimate: persons in minus persons out, from 0 each morning at 4:00.
+          @if (series()?.granularity === 'day') {
+            A day shows its highest value.
+          }
+        </p>
+      </div>
+    </header>
+    @if (series(); as s) {
+      <app-occupancy-chart [series]="s" />
+    } @else {
+      <div class="st__room-skel skel" aria-label="Loading" role="status"></div>
     }
   </section>
 

@@ -12,9 +12,9 @@
   flex: 1 1 16rem;
   min-width: 0;
 }
-// The button lines up with the box of the labelled field (56px).
+// The button has the height of the labelled field (56px), so both line up.
 .new > app-button {
-  margin-top: 8px;
+  --button-height: var(--field-height);
 }
 
 .trail {

@@ -6,7 +6,10 @@
   it. Both live in /var/lib/gangway, outside the Nix store.
 
   # Inputs
-  - `inputs.ui-kit` — the sources of @stupa-makers/ui-kit for the web UI
+  - `withSystem "x86_64-linux"` — the web UI package of the build machine.
+    The web UI is static files with no store references, so the same files
+    work on the Pi. An x86_64 build takes about a minute; an aarch64 build
+    under binfmt emulation takes many minutes
 
   # Defines
   - `services.gangway` — `enable`, `package`, `frontendPackage` and
@@ -21,7 +24,7 @@
     on newer coreutils. `GANGWAY_CONFIG` points the app at that copy.
     The `gangway-env` secret holds `API_KEY=…`, the key the web UI asks for
 */
-{ inputs, ... }:
+{ withSystem, ... }:
 
 {
   flake.modules.nixos.gangway-app =
@@ -49,8 +52,8 @@
 
         frontendPackage = lib.mkOption {
           type = lib.types.package;
-          default = pkgs.callPackage ../../nix/gangway-frontend.nix { inherit (inputs) ui-kit; };
-          defaultText = lib.literalExpression "pkgs.callPackage ../../nix/gangway-frontend.nix { inherit (inputs) ui-kit; }";
+          default = withSystem "x86_64-linux" ({ config, ... }: config.packages.gangway-frontend);
+          defaultText = lib.literalExpression "the gangway-frontend package of x86_64-linux";
           description = "The static files of the web UI, which nginx serves.";
         };
 

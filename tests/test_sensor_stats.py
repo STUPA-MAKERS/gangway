@@ -3,10 +3,12 @@
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import cv2
+import numpy as np
 import pytest
 import requests
 
-from gangway.api.stats import counts_for, summary_for
+from gangway.api.stats import counts_for, prepare_heatmap, summary_for
 from gangway.xovis.sensor_api import (
     Count,
     SensorClient,
@@ -178,3 +180,22 @@ def test_client_reports_an_unreachable_sensor() -> None:
 
     with pytest.raises(SensorError):
         SensorClient(fetch=offline).status()
+
+
+def test_prepare_heatmap_crops_the_frame_and_mirrors_the_picture() -> None:
+    """The transparent frame goes away, and left and right change places."""
+    image = np.zeros((6, 8, 4), np.uint8)
+    image[:, :, :3] = 255
+    image[1:5, 2:6] = (0, 0, 255, 255)
+    image[1:5, 2] = (255, 0, 0, 255)
+    png = cv2.imencode(".png", image)[1].tobytes()
+
+    result = cv2.imdecode(
+        np.frombuffer(prepare_heatmap(png), np.uint8), cv2.IMREAD_UNCHANGED
+    )
+
+    assert result is not None
+    pixels: list[list[list[int]]] = result.tolist()
+    assert result.shape == (4, 4, 3)
+    assert pixels[0][3] == [255, 0, 0]
+    assert pixels[0][0] == [0, 0, 255]

@@ -254,11 +254,42 @@ def get_health() -> Health:
     }
 
 
+def prepare_heatmap(png: bytes) -> bytes:
+    """Crop the heat map to its picture and turn it the way of the live view.
+
+    The sensor puts the picture on a transparent frame. A browser shows the
+    frame in the color of the page, so the function crops it away. The
+    picture of the sensor is mirrored left to right, compared with the
+    floor plan.
+
+    Args:
+        png: The PNG of the sensor.
+
+    Returns:
+        The cropped and mirrored PNG, without transparency.
+
+    Raises:
+        HTTPException: 502 if the data is not an image, 500 if the result
+            cannot be encoded.
+    """
+    image = cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_UNCHANGED)
+    if image is None:
+        raise HTTPException(status_code=502, detail="The heat map is not an image.")
+    if image.ndim == 3 and image.shape[2] == 4:
+        ys, xs = np.nonzero(image[:, :, 3])
+        if len(xs):
+            image = image[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1]
+        image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+    ok, encoded = cv2.imencode(".png", cv2.flip(image, 1))
+    if not ok:
+        raise HTTPException(status_code=500, detail="The heat map was not encoded.")
+    return encoded.tobytes()
+
+
 @router.get("/heatmap", response_class=Response)
 def get_heatmap() -> Response:
     """Get the heat map of the sensor over its camera image.
 
-    The image is turned by 180 degrees, as the camera image of the live view.
     The sensor clears the heat map when it starts.
 
     Returns:
@@ -268,14 +299,8 @@ def get_heatmap() -> Response:
         png = SENSOR.heatmap()
     except SensorError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
-    image = cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_COLOR)
-    if image is None:
-        raise HTTPException(status_code=502, detail="The heat map is not an image.")
-    ok, encoded = cv2.imencode(".png", cv2.flip(image, -1))
-    if not ok:
-        raise HTTPException(status_code=500, detail="The heat map was not encoded.")
     return Response(
-        content=encoded.tobytes(),
+        content=prepare_heatmap(png),
         media_type="image/png",
         headers={"Cache-Control": "max-age=300"},
     )

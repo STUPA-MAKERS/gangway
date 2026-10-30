@@ -120,29 +120,6 @@ import { VisualizationComponent } from '../../features/visualization/visualizati
     .split__main {
       padding-bottom: calc(56px + var(--space-6));
     }
-    .fabs {
-      position: fixed;
-      right: var(--space-6);
-      bottom: var(--space-6);
-      z-index: var(--z-sticky);
-      display: flex;
-      gap: var(--space-3);
-      animation: fabs-in var(--motion-fast) var(--ease-enter);
-    }
-    :host-context(.frame--phone) .fabs {
-      right: var(--space-4);
-      bottom: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom) + var(--space-4));
-    }
-    .fab-reset ::ng-deep .btn--fab {
-      background: var(--color-surface-3);
-      color: var(--color-text);
-    }
-    @keyframes fabs-in {
-      from {
-        opacity: 0;
-        transform: translateY(var(--space-3));
-      }
-    }
     .card-surface {
       padding: var(--space-5);
       border-radius: var(--radius-xl);

@@ -203,8 +203,10 @@ The UI has three pages:
 - **Animation** edits the active animation. The backend gives the
   parameters of each animation (`GET /api/animations/`), so a new animation
   needs no change in the UI. Click **Save** to apply the change.
-- **Presets** saves the current animation as a preset. It also loads,
-  edits, renames and deletes the presets.
+- **Presets** lists the presets. A preset opens in a sheet beside the
+  list, with the editor of its animation. The sheet loads, renames and
+  deletes the preset. The floating button saves the current animation as
+  a new preset.
 
 The UI sends its requests with no API key first. Through the SSO tunnel
 nginx adds the key. On the LAN the backend refuses the request, and the UI

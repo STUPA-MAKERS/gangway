@@ -1,4 +1,4 @@
-import type { Routes } from '@angular/router';
+import type { Routes, UrlMatchResult, UrlSegment } from '@angular/router';
 import { ShellComponent } from './layout/shell.component';
 
 /**
@@ -28,8 +28,9 @@ export const routes: Routes = [
           import('./pages/animation/animation.page').then((m) => m.AnimationPage),
       },
       {
-        path: 'presets',
+        matcher: presetsMatcher,
         title: 'Presets · Gangway',
+        data: { fill: true },
         loadComponent: () => import('./pages/presets/presets.page').then((m) => m.PresetsPage),
       },
       { path: '**', redirectTo: 'live' },
@@ -43,3 +44,14 @@ export const LEGACY_HASHES: Record<string, string> = {
   '#animations': '/animation',
   '#presets': '/presets',
 };
+
+/**
+ * Matches `/presets` and `/presets/:name` with one route. The page stays when a preset
+ * opens or closes, so the list keeps its scroll position. The name goes to the `name`
+ * input of the page.
+ */
+export function presetsMatcher(segments: UrlSegment[]): UrlMatchResult | null {
+  if (segments[0]?.path !== 'presets' || segments.length > 2) return null;
+  const name = segments[1];
+  return { consumed: segments, posParams: name ? { name } : {} };
+}

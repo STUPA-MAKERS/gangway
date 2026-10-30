@@ -67,3 +67,44 @@ body {
     touch-action: manipulation;
   }
 }
+
+// A spinner for a load state.
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--color-surface-3);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+// The floating Save and Reset of an editor (the animation page, a preset). They show only
+// while the editor has changes. On a phone they sit above the bottom bar.
+.fabs {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: var(--z-sticky);
+  display: flex;
+  gap: var(--space-3);
+  animation: fabs-in var(--motion-fast) var(--ease-enter);
+}
+.frame--phone .fabs {
+  right: var(--space-4);
+  bottom: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom) + var(--space-4));
+}
+.fabs .fab-reset .btn--fab {
+  background: var(--color-surface-3);
+  color: var(--color-text);
+}
+@keyframes fabs-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-3));
+  }
+}

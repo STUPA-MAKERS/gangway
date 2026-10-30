@@ -186,8 +186,8 @@ def test_client_reports_an_unreachable_sensor() -> None:
         SensorClient(fetch=offline).status()
 
 
-def test_prepare_heatmap_crops_the_frame_and_turns_the_picture() -> None:
-    """The transparent frame goes away, and the picture turns by 180 degrees."""
+def test_prepare_heatmap_crops_the_frame() -> None:
+    """The transparent frame goes away, and the picture keeps its orientation."""
     image = np.zeros((6, 8, 4), np.uint8)
     image[:, :, :3] = 255
     image[1:5, 2:6] = (0, 0, 255, 255)
@@ -201,8 +201,8 @@ def test_prepare_heatmap_crops_the_frame_and_turns_the_picture() -> None:
     assert result is not None
     pixels: list[list[list[int]]] = result.tolist()
     assert result.shape == (4, 4, 3)
-    assert pixels[3][3] == [255, 0, 0]
-    assert pixels[0][0] == [0, 0, 255]
+    assert pixels[0][0] == [255, 0, 0]
+    assert pixels[3][3] == [0, 0, 255]
 
 
 def test_occupancy_adds_in_takes_out_and_never_goes_below_zero() -> None:

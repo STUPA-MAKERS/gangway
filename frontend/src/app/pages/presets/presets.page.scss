@@ -1,97 +1,16 @@
-@use 'scroll-fade' as fade;
+@use 'list-pane' as lp;
 
-// The list/detail frame of STUPA-Workflow and homebox-makers (`shared/ui/_list-pane.scss`
-// there): the list column at `--ld-list-width`, the detail as a sheet beside it while
-// split. Each pane scrolls inside itself.
-:host {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-}
+// The list/detail frame of the kit (`frame` of `list-pane`): the list column at
+// `--ld-list-width`, the detail as a sheet beside it while split. Each pane scrolls inside
+// itself.
+@include lp.frame(pp);
 
-.pp {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-}
-.pp > app-list-detail {
-  flex: 1 1 auto;
-}
-
-// The pane header of `app-page-header`: one control high, the title in display size and
-// the actions at the end.
-.pp__head {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: var(--control-height);
-  padding-inline: var(--space-4) 0;
-}
-.pp__title {
-  flex: 1 1 0;
-  min-width: 0;
-  margin: 0;
-  font-size: var(--fs-d2);
-  line-height: var(--lh-d2);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-tight);
-}
-:host-context(.frame--phone) .pp__head {
-  padding-inline-start: var(--space-1);
-}
-:host-context(.frame--phone) .pp__title {
-  font-size: var(--fs-h1);
-  line-height: var(--lh-h1);
-}
-
-// The button of the list: fixed in the window, or at the bottom end of the list column
-// while split.
-.pp__fab {
-  position: fixed;
-  right: var(--space-6);
-  bottom: var(--space-6);
-  z-index: var(--z-sticky);
-}
-:host-context(.frame--phone) .pp__fab {
-  right: var(--space-4);
-  bottom: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom) + var(--space-4));
-}
-.pp__fab--contained {
-  position: absolute;
-  right: var(--space-4);
-  bottom: var(--space-4);
-}
-
-// The rows. Split, only they scroll, and their ends fade under the bars.
-.pp__scroll {
-  --pp-fade: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.pp--split .pp__scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scroll-padding-block: var(--pp-fade);
-  @include fade.fade-y(var(--pp-fade));
-}
-.pp--split .pp__scroll > * {
-  flex: none;
-}
-
+// The group heading of a list (`lp.month`). The first one sits close to the search.
 .pp__group {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-// The group heading of a list (`lp.month`). The first one sits close to the search.
 .pp__group-head {
   padding: var(--space-1) var(--space-4) 6px;
 }
@@ -99,10 +18,6 @@
   margin-inline-start: 2px;
   color: var(--color-text-muted);
   font-weight: var(--fw-medium);
-}
-// The rows end above the floating button.
-.pp__scroll {
-  padding-bottom: calc(56px + var(--space-6));
 }
 .pp__rows {
   display: flex;
@@ -114,37 +29,6 @@
 }
 :host-context(.frame--phone) .pp__group-head {
   padding-inline: var(--space-1);
-}
-
-.pp__detail {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
-}
-// Split, the sheet has the height of the pane, and its content scrolls in it. The sheet
-// bar opens the sheet, so the sheet has no top padding.
-.pp--split .pp__detail {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 0 var(--space-6) var(--space-6);
-  border-radius: var(--radius-2xl);
-  background: var(--color-surface-1);
-}
-.pp--split .pp__detail:has(.pp__none) {
-  padding: 0;
-  background: none;
-}
-// No preset is open: an empty sheet with a hint (`app-detail-none`).
-.pp__none {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
-  padding: var(--space-4);
-  border-radius: var(--radius-2xl);
-  background: var(--color-surface-1);
 }
 
 .pp__sheet {

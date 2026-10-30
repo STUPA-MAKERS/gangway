@@ -179,17 +179,17 @@
     "ui-kit": {
       "flake": false,
       "locked": {
-        "lastModified": 1793129405,
-        "narHash": "sha256-2dBZnI0OWh0EOk8WP5Y1i8ya/wTD/L03Ac1SPigGreg=",
+        "lastModified": 1793401775,
+        "narHash": "sha256-PklQwStZ7eLY19rDDFxQhlS5+6Auux8Rlrq2ZRFhuG8=",
         "owner": "STUPA-MAKERS",
         "repo": "ui-kit",
-        "rev": "958d373a2a4ffb1f768ac30a8f40a463b0de9bcb",
+        "rev": "4fec590edfbf76b2c20ae07dc39e36b75c32e87d",
         "type": "github"
       },
       "original": {
         "owner": "STUPA-MAKERS",
         "repo": "ui-kit",
-        "rev": "958d373a2a4ffb1f768ac30a8f40a463b0de9bcb",
+        "rev": "4fec590edfbf76b2c20ae07dc39e36b75c32e87d",
         "type": "github"
       }
     }

@@ -10,20 +10,23 @@ import {
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
-import { UI_KIT_INTL, uiKitIntlFromLang } from '@stupa-makers/ui-kit';
+import { ThemeService, provideUiKit } from '@stupa-makers/ui-kit';
 import { apiKeyInterceptor } from './core/api/api-key.interceptor';
 import { SwUpdateService } from './core/pwa/sw-update.service';
-import { ThemeService } from './core/theme/theme.service';
 import { routes } from './app.routes';
 
-/** The root providers of the app. The UI is in English, so the kit texts are English too. */
+/**
+ * The root providers of the app. The UI is in English, so the kit texts are English too.
+ * The theme keeps the storage key of the former app service, so a saved theme stays. The
+ * app has one manifest for both themes, so the theme service leaves its link as it is.
+ */
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([apiKeyInterceptor])),
-    { provide: UI_KIT_INTL, useFactory: () => uiKitIntlFromLang(signal('en')) },
+    provideUiKit({ lang: signal('en'), theme: { storageKey: 'gangway.theme', manifest: null } }),
     provideAppInitializer(() => {
       inject(ThemeService).init();
       inject(SwUpdateService).init();

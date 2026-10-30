@@ -16,7 +16,9 @@
     "module": "preserve",
     "baseUrl": "./",
     "paths": {
-      "@stupa-makers/ui-kit": ["vendor/ui-kit/src/public-api.ts"]
+      "@stupa-makers/ui-kit": ["vendor/ui-kit/src/public-api.ts"],
+      "@stupa-makers/ui-kit/shell": ["vendor/ui-kit/shell/src/public-api.ts"],
+      "@stupa-makers/ui-kit/pwa": ["vendor/ui-kit/pwa/src/public-api.ts"]
     }
   },
   "angularCompilerOptions": {

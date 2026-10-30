@@ -15,13 +15,16 @@ import { firstValueFrom } from 'rxjs';
 import {
   ButtonComponent,
   ConfirmDialogComponent,
+  DetailNoneComponent,
   DialogComponent,
   EmptyStateComponent,
-  IconComponent,
+  FabComponent,
+  FabGroupComponent,
   InputComponent,
   ListDetailLayoutComponent,
   MEDIA,
   ListItemComponent,
+  PageHeaderComponent,
   RowMenuComponent,
   type RowMenuItem,
   type RowMenuSection,
@@ -33,6 +36,7 @@ import {
   ToastService,
   mediaQuery,
 } from '@stupa-makers/ui-kit';
+import { injectListDetailPage } from '@stupa-makers/ui-kit/shell';
 import { ApiService, errorText } from '../../core/api/api.service';
 import type { AnimationConfig } from '../../core/api/models';
 import { ConfigStore } from '../../core/state/config-store.service';
@@ -79,12 +83,15 @@ const SHEET_MENU: RowMenuSection[] = [
     AnimationEditorComponent,
     ButtonComponent,
     ConfirmDialogComponent,
+    DetailNoneComponent,
     DialogComponent,
     EmptyStateComponent,
-    IconComponent,
+    FabComponent,
+    FabGroupComponent,
     InputComponent,
     ListDetailLayoutComponent,
     ListItemComponent,
+    PageHeaderComponent,
     RowMenuComponent,
     ScrollFadeDirective,
     SearchPillComponent,
@@ -110,8 +117,12 @@ export class PresetsPage {
 
   protected readonly phone = mediaQuery(MEDIA.phone);
   private readonly layout = viewChild(ListDetailLayoutComponent);
-  /** The list and the sheet sit side by side. */
-  protected readonly split = computed(() => this.layout()?.collapsed() === false);
+  /**
+   * The list and the sheet sit side by side. The open preset comes from the `name` input,
+   * not from `selectedId`, because the page matches `/presets/:name` itself and has no
+   * child route.
+   */
+  protected readonly split = injectListDetailPage(this.layout).split;
 
   protected readonly selected = computed(() => this.name() ?? null);
 

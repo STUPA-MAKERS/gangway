@@ -1,9 +1,7 @@
 <div class="pp" [class.pp--split]="split()">
   <app-list-detail [detailOpen]="selected() !== null" (back)="close()">
     <section list class="ld-pane pp__pane" aria-labelledby="pp-title">
-      <header class="pp__head">
-        <h1 id="pp-title" class="pp__title">Presets</h1>
-      </header>
+      <app-page-header [pane]="true" title="Presets" titleId="pp-title" />
 
       <app-sticky-bar class="ld-pane__filters">
         <app-search-pill
@@ -53,17 +51,13 @@
         }
       </div>
 
-      <div class="pp__fab" [class.pp__fab--contained]="split()">
-        <app-button
-          variant="fab"
-          [iconOnly]="true"
-          ariaLabel="New preset"
-          title="New preset"
-          (click)="startCreate()"
-        >
-          <app-icon name="plus" />
-        </app-button>
-      </div>
+      <app-fab
+        label="New preset"
+        icon="plus"
+        [iconOnly]="true"
+        [contained]="split()"
+        (activate)="startCreate()"
+      />
     </section>
 
     <div detail class="pp__detail">
@@ -98,52 +92,39 @@
           </section>
         </article>
 
-        <div class="fabs">
+        <app-fab-group>
           @if (dirty() || busy()) {
-            <app-button
-              class="fab-reset"
-              variant="fab"
+            <app-fab
+              label="Reset"
+              icon="reset"
+              tone="neutral"
               [iconOnly]="true"
-              ariaLabel="Reset"
-              title="Reset"
               [disabled]="busy()"
-              (click)="confirmReset.set(true)"
-            >
-              <app-icon name="reset" />
-            </app-button>
-            <app-button
-              variant="fab"
+              (activate)="confirmReset.set(true)"
+            />
+            <app-fab
+              label="Save"
+              icon="check"
               [iconOnly]="true"
-              ariaLabel="Save"
-              title="Save"
               [disabled]="!canSave() && !busy()"
               [loading]="busy()"
-              (click)="save()"
-            >
-              <app-icon name="check" />
-            </app-button>
+              (activate)="save()"
+            />
           }
-          <app-button
-            variant="fab"
+          <app-fab
+            [label]="'Load ' + name"
+            icon="play"
             [iconOnly]="true"
-            [ariaLabel]="'Load ' + name"
-            title="Load"
             [disabled]="busy()"
-            (click)="load(name)"
-          >
-            <app-icon name="play" />
-          </app-button>
-        </div>
-      } @else if (split()) {
-        <div class="pp__none">
-          <app-empty-state
-            plain
-            fill
-            heading="No preset open"
-            body="Pick a preset in the list to edit it."
-            icon="list"
+            (activate)="load(name)"
           />
-        </div>
+        </app-fab-group>
+      } @else if (split()) {
+        <app-detail-none
+          icon="list"
+          heading="No preset open"
+          body="Pick a preset in the list to edit it."
+        />
       }
     </div>
   </app-list-detail>

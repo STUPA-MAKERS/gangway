@@ -37,7 +37,7 @@ Gangway is a Python-based lighting control system for an interactive art install
 - `src/app/pages/`: `live`, `animation` and `presets`.
 - `src/app/features/animation-editor/`: the recursive editor. `schema.ts` reads the animation schema of `GET /api/animations/` and checks a draft. A new animation in the backend needs no change here.
 - `src/app/features/visualization/`: the canvas of the live view. `audio-meter/` shows `GET /api/data/audio`.
-- `src/app/core/`: the API client, the API key, the app state (`ConfigStore`) and the service worker update. The theme is the `ThemeService` of the kit.
+- `src/app/core/`: the API client, the API key and the app state (`ConfigStore`). The theme is the `ThemeService` of the kit, and the update and offline notices are the `SwUpdateService` and the `OfflineService` of `@stupa-makers/ui-kit/pwa`.
 - Requests go out with no `X-API-Key` first, because nginx adds the key on the SSO tunnel. On 401 or 403 the shell asks for the key.
 - Check with `npm run build`, `npm test` (jest and Testing Library) and `npm run lint` in `frontend/`. Nix builds the static files (`nix/gangway-frontend.nix`) and nginx serves them. The flake input `ui-kit` must have the commit of the submodule.
 

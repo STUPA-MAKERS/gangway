@@ -83,17 +83,6 @@ body {
   }
 }
 
-// The kit shell keeps a small gap under a `fill` page (route data), but it does not cap
-// the height of the main area. Without the cap a pane of the page grows with its content
-// and the whole page scrolls. On a phone the bottom bar takes its height from the frame.
-app-shell .main.main--fill {
-  height: 100dvh;
-}
-app-shell .frame--phone .main.main--fill {
-  --main-pad-bottom: var(--space-3);
-  height: calc(100dvh - var(--app-bottom-inset));
-}
-
 // The head of a detail sheet, as in STUPA-Workflow: the title in display size in the sheet
 // bar, a muted line below it, and a rule under both.
 :root {

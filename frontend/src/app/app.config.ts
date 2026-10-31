@@ -11,8 +11,8 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
 import { ThemeService, provideUiKit } from '@stupa-makers/ui-kit';
+import { OfflineService, SwUpdateService } from '@stupa-makers/ui-kit/pwa';
 import { apiKeyInterceptor } from './core/api/api-key.interceptor';
-import { SwUpdateService } from './core/pwa/sw-update.service';
 import { routes } from './app.routes';
 
 /**
@@ -30,6 +30,7 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       inject(ThemeService).init();
       inject(SwUpdateService).init();
+      inject(OfflineService).init();
     }),
     // The worker (ngsw-config.json) caches the app shell and the assets, not `/api`. A
     // browser registers it only on HTTPS or on localhost.

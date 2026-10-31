@@ -1,0 +1,12 @@
+// The load, offline and error states of the gate, in the middle of the main area.
+.state {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  max-width: 32rem;
+  margin-inline: auto;
+  text-align: center;
+}

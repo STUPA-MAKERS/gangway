@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import {
-  ButtonComponent,
   ConfirmDialogComponent,
-  IconComponent,
+  FabComponent,
+  FabGroupComponent,
   MEDIA,
   ToastService,
   mediaQuery,
@@ -22,9 +22,9 @@ import { VisualizationComponent } from '../../features/visualization/visualizati
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AnimationEditorComponent,
-    ButtonComponent,
     ConfirmDialogComponent,
-    IconComponent,
+    FabComponent,
+    FabGroupComponent,
     VisualizationComponent,
   ],
   template: `
@@ -49,28 +49,24 @@ import { VisualizationComponent } from '../../features/visualization/visualizati
     </div>
 
     @if (store.dirty() || store.saving()) {
-      <div class="fabs">
-        <app-button
-          class="fab-reset"
-          variant="fab"
+      <app-fab-group>
+        <app-fab
+          label="Reset"
+          icon="reset"
+          tone="neutral"
           [iconOnly]="true"
-          ariaLabel="Reset"
           [disabled]="store.saving()"
-          (click)="confirmDiscard.set(true)"
-        >
-          <app-icon name="reset" />
-        </app-button>
-        <app-button
-          variant="fab"
+          (activate)="confirmDiscard.set(true)"
+        />
+        <app-fab
+          label="Save"
+          icon="check"
           [iconOnly]="true"
-          ariaLabel="Save"
           [disabled]="!canSave() && !store.saving()"
           [loading]="store.saving()"
-          (click)="save()"
-        >
-          <app-icon name="check" />
-        </app-button>
-      </div>
+          (activate)="save()"
+        />
+      </app-fab-group>
     }
 
     <app-confirm-dialog

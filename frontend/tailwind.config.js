@@ -5,5 +5,9 @@ const uiKit = require('./vendor/ui-kit/tailwind-preset');
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   presets: [uiKit],
-  content: ['./src/**/*.{html,ts}', './vendor/ui-kit/src/lib/**/*.{html,ts}'],
+  content: [
+    './src/**/*.{html,ts}',
+    './vendor/ui-kit/src/lib/**/*.{html,ts}',
+    './vendor/ui-kit/shell/src/**/*.{html,ts}',
+  ],
 };

@@ -33,11 +33,11 @@ Gangway is a Python-based lighting control system for an interactive art install
 
 ### 5. Frontend (`./frontend/`)
 - The frontend is an Angular 20 single-page app: standalone components, signals and `OnPush`. It uses the STUPA-MAKERS ui-kit, a git submodule in `frontend/vendor/ui-kit`. The tsconfig path `@stupa-makers/ui-kit` points to its sources. Follow `STUPA-Workflow/frontend/DESIGN_SYSTEM.md`: use the kit components and the semantic tokens only.
-- `src/app/layout/`: the shell (navigation rail, bottom bar on a phone) and the prompt for the API key.
+- `src/app/app.ts`: the frame of the app, the `app-shell` of the kit (`@stupa-makers/ui-kit/shell`): the navigation rail, the bottom bar on a phone and the theme switch. Until the first load is done, its main area shows the load state or the prompt for the API key (`src/app/layout/key-prompt.component.ts`).
 - `src/app/pages/`: `live`, `animation` and `presets`.
 - `src/app/features/animation-editor/`: the recursive editor. `schema.ts` reads the animation schema of `GET /api/animations/` and checks a draft. A new animation in the backend needs no change here.
 - `src/app/features/visualization/`: the canvas of the live view. `audio-meter/` shows `GET /api/data/audio`.
-- `src/app/core/`: the API client, the API key, the app state (`ConfigStore`), the theme and the service worker update.
+- `src/app/core/`: the API client, the API key and the app state (`ConfigStore`). The theme is the `ThemeService` of the kit, and the update and offline notices are the `SwUpdateService` and the `OfflineService` of `@stupa-makers/ui-kit/pwa`.
 - Requests go out with no `X-API-Key` first, because nginx adds the key on the SSO tunnel. On 401 or 403 the shell asks for the key.
 - Check with `npm run build`, `npm test` (jest and Testing Library) and `npm run lint` in `frontend/`. Nix builds the static files (`nix/gangway-frontend.nix`) and nginx serves them. The flake input `ui-kit` must have the commit of the submodule.
 

@@ -1,47 +1,41 @@
 import type { Routes, UrlMatchResult, UrlSegment } from '@angular/router';
-import { ShellComponent } from './layout/shell.component';
 
 /**
- * The routes. Each page sits in `ShellComponent` and loads lazily. `data.fill` makes a page
- * fill the free height of the viewport.
+ * The routes. Each page loads lazily into the outlet of the kit shell (`App`). The route
+ * data `wide` lifts the width cap of the shell, because each page sets its own width.
+ * `fill` makes a page fill the free height of the viewport.
  */
 export const routes: Routes = [
   {
     path: '',
-    component: ShellComponent,
-    children: [
-      {
-        path: '',
-        pathMatch: 'full',
-        redirectTo: () => LEGACY_HASHES[window.location.hash] ?? '/live',
-      },
-      {
-        path: 'live',
-        title: 'Live · Gangway',
-        data: { fill: true },
-        loadComponent: () => import('./pages/live/live.page').then((m) => m.LivePage),
-      },
-      {
-        path: 'animation',
-        title: 'Animation · Gangway',
-        data: { fill: true },
-        loadComponent: () =>
-          import('./pages/animation/animation.page').then((m) => m.AnimationPage),
-      },
-      {
-        matcher: presetsMatcher,
-        title: 'Presets · Gangway',
-        data: { fill: true },
-        loadComponent: () => import('./pages/presets/presets.page').then((m) => m.PresetsPage),
-      },
-      {
-        path: 'stats',
-        title: 'Statistics · Gangway',
-        loadComponent: () => import('./pages/stats/stats.page').then((m) => m.StatsPage),
-      },
-      { path: '**', redirectTo: 'live' },
-    ],
+    pathMatch: 'full',
+    redirectTo: () => LEGACY_HASHES[window.location.hash] ?? '/live',
   },
+  {
+    path: 'live',
+    title: 'Live · Gangway',
+    data: { wide: true, fill: true },
+    loadComponent: () => import('./pages/live/live.page').then((m) => m.LivePage),
+  },
+  {
+    path: 'animation',
+    title: 'Animation · Gangway',
+    data: { wide: true, fill: true },
+    loadComponent: () => import('./pages/animation/animation.page').then((m) => m.AnimationPage),
+  },
+  {
+    matcher: presetsMatcher,
+    title: 'Presets · Gangway',
+    data: { wide: true, fill: true },
+    loadComponent: () => import('./pages/presets/presets.page').then((m) => m.PresetsPage),
+  },
+  {
+    path: 'stats',
+    title: 'Statistics · Gangway',
+    data: { wide: true },
+    loadComponent: () => import('./pages/stats/stats.page').then((m) => m.StatsPage),
+  },
+  { path: '**', redirectTo: 'live' },
 ];
 
 /** The hash links of the old Next.js app (`/#viz`), with their new route. */

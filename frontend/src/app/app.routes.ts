@@ -20,7 +20,7 @@ export const routes: Routes = [
   {
     path: 'animation',
     title: 'Animation · Gangway',
-    data: { wide: true },
+    data: { wide: true, fill: true },
     loadComponent: () => import('./pages/animation/animation.page').then((m) => m.AnimationPage),
   },
   {

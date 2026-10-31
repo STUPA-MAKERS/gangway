@@ -100,30 +100,31 @@ import { VisualizationComponent } from '../../features/visualization/visualizati
       max-width: none;
     }
     .split__live {
-      position: sticky;
-      top: var(--space-6);
       flex: 1 1 0;
-      height: calc(100dvh - 2 * var(--space-6));
       min-width: 0;
+      min-height: 0;
     }
     .split__main {
       display: flex;
       flex: 1 1 0;
       flex-direction: column;
-      gap: var(--space-5);
       min-width: 0;
+      min-height: 0;
     }
-    .split__main {
-      padding-bottom: calc(56px + var(--space-6));
-    }
+    /* The page fills the window (route data fill), and the editor scrolls inside its
+       card. The end of the editor stays above the floating Save and Reset. */
     .card-surface {
-      padding: var(--space-5);
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: var(--space-5) var(--space-5) calc(56px + var(--space-6));
       border-radius: var(--radius-xl);
       background: var(--color-surface-1);
     }
     @media (max-width: 768px) {
       .card-surface {
-        padding: var(--space-4);
+        padding: var(--space-4) var(--space-4) calc(56px + var(--space-6));
       }
     }
   `,

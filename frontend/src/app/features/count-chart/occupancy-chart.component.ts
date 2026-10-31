@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { observeElementSize } from '@stupa-makers/ui-kit';
 import type { CountSeries } from '../../core/api/models';
 import { bucketLabel, chartTicks, niceCeil } from './count-chart.component';
 
@@ -22,7 +31,7 @@ const HEIGHT = 100;
         <span>{{ max() }}</span>
         <span>0</span>
       </div>
-      <div class="oc__plot">
+      <div #plot class="oc__plot">
         <svg
           class="oc__svg"
           [attr.viewBox]="'0 0 ' + width() + ' ' + height"
@@ -152,7 +161,17 @@ export class OccupancyChartComponent {
     }));
   });
 
-  protected readonly ticks = computed(() => chartTicks(this.series()));
+  private readonly plot = viewChild.required<ElementRef<HTMLElement>>('plot');
+  private readonly plotWidth = signal(0);
+
+  protected readonly ticks = computed(() => chartTicks(this.series(), this.plotWidth()));
+
+  constructor() {
+    observeElementSize(
+      () => this.plot().nativeElement,
+      (size) => this.plotWidth.set(size.width),
+    );
+  }
 
   protected readonly label = computed(() => {
     const peak = Math.max(0, ...this.series().buckets.map((b) => b.occupancy));

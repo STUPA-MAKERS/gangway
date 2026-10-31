@@ -279,19 +279,17 @@ def get_health() -> Health:
 
 
 def prepare_heatmap(png: bytes) -> bytes:
-    """Crop the heat map to its picture and turn it the way of the live view.
+    """Crop the heat map to its picture.
 
     The sensor puts the picture on a transparent frame. A browser shows the
     frame in the color of the page, so the function crops it away. The
-    picture of the sensor is upside down, compared with the floor plan, so
-    the function turns it by 180 degrees, as the live view does with the
-    camera image.
+    picture keeps the orientation of the sensor.
 
     Args:
         png: The PNG of the sensor.
 
     Returns:
-        The cropped and turned PNG, without transparency.
+        The cropped PNG, without transparency.
 
     Raises:
         HTTPException: 502 if the data is not an image, 500 if the result
@@ -305,7 +303,7 @@ def prepare_heatmap(png: bytes) -> bytes:
         if len(xs):
             image = image[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1]
         image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
-    ok, encoded = cv2.imencode(".png", cv2.flip(image, -1))
+    ok, encoded = cv2.imencode(".png", image)
     if not ok:
         raise HTTPException(status_code=500, detail="The heat map was not encoded.")
     return encoded.tobytes()

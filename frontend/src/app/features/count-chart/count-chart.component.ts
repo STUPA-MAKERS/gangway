@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { observeElementSize } from '@stupa-makers/ui-kit';
 import type { CountBucket, CountSeries } from '../../core/api/models';
 
 /** The height of one half of the chart (in or out) in SVG units. */
@@ -37,7 +46,7 @@ export interface Tick {
         <span>0</span>
         <span>{{ max() }}</span>
       </div>
-      <div class="cc__plot">
+      <div #plot class="cc__plot">
         <svg
           class="cc__svg"
           [attr.viewBox]="'0 0 ' + width() + ' ' + 2 * half"
@@ -160,7 +169,17 @@ export class CountChartComponent {
     }));
   });
 
-  protected readonly ticks = computed(() => chartTicks(this.series()));
+  private readonly plot = viewChild.required<ElementRef<HTMLElement>>('plot');
+  private readonly plotWidth = signal(0);
+
+  protected readonly ticks = computed(() => chartTicks(this.series(), this.plotWidth()));
+
+  constructor() {
+    observeElementSize(
+      () => this.plot().nativeElement,
+      (size) => this.plotWidth.set(size.width),
+    );
+  }
 
   protected readonly label = computed(() => {
     const { entered, left } = this.series();
@@ -179,18 +198,30 @@ export function niceCeil(value: number): number {
   return step * power;
 }
 
-/** The labels below a chart of the series: hours, weekdays or dates. */
-export function chartTicks(series: CountSeries): Tick[] {
+/** The smallest distance between two labels below a chart, in px. */
+const TICK_GAP = 56;
+
+/**
+ * The labels below a chart of the series: hours, weekdays or dates.
+ *
+ * @param width The width of the plot in px. A narrow plot (a phone) gets fewer labels,
+ *   so they do not run into each other. 0 means "not measured": all labels.
+ */
+export function chartTicks(series: CountSeries, width = 0): Tick[] {
   const { buckets, granularity } = series;
   const n = buckets.length;
   const every = tickStep(n, granularity);
-  return buckets
+  const ticks = buckets
     .map((bucket, i) => ({ bucket, i }))
     .filter(({ bucket, i }) => isTick(bucket, i, every, granularity, n))
     .map(({ bucket, i }) => ({
       at: ((i + 0.5) / n) * 100,
       label: tickLabel(bucket, granularity, n),
     }));
+  const room = width > 0 ? Math.max(2, Math.floor(width / TICK_GAP)) : ticks.length;
+  const keep = Math.ceil(ticks.length / room);
+  // Thin from the end, so the newest bucket keeps its label.
+  return ticks.filter((_tick, i) => (ticks.length - 1 - i) % keep === 0);
 }
 
 function tickStep(n: number, granularity: CountSeries['granularity']): number {

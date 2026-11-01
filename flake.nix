@@ -45,7 +45,7 @@
     };
 
     ui-kit = {
-      url = "github:STUPA-MAKERS/ui-kit/34d992b78554a988ea91bba4b27341b4dacfdbce";
+      url = "github:STUPA-MAKERS/ui-kit/dad8ce96627b5e4ee405ebbe52925ec5856507d8";
       flake = false;
     };
   };

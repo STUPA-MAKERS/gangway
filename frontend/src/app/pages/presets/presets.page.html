@@ -16,10 +16,7 @@
 
       <div class="pp__scroll" appScrollFade="y">
         @if (filtered().length) {
-          <section class="pp__group" aria-labelledby="pp-group">
-            <h2 id="pp-group" class="sec pp__group-head">
-              Saved <span class="pp__count">{{ filtered().length }}</span>
-            </h2>
+          <app-list-group label="Saved">
             <div class="pp__rows" [class.rowgroup]="!split()" role="list">
               @for (name of filtered(); track name) {
                 <app-list-item
@@ -39,7 +36,7 @@
                 </app-list-item>
               }
             </div>
-          </section>
+          </app-list-group>
         } @else if (search().trim()) {
           <app-empty-state heading="No preset matches" body="Try another search." icon="search" />
         } @else {

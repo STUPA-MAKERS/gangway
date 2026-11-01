@@ -5,20 +5,6 @@
 // itself.
 @include lp.frame(pp);
 
-// The group heading of a list (`lp.month`). The first one sits close to the search.
-.pp__group {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.pp__group-head {
-  padding: var(--space-1) var(--space-4) 6px;
-}
-.pp__count {
-  margin-inline-start: 2px;
-  color: var(--color-text-muted);
-  font-weight: var(--fw-medium);
-}
 .pp__rows {
   display: flex;
   flex-direction: column;
@@ -26,9 +12,6 @@
 }
 .pp--split .pp__row {
   border-radius: var(--radius-lg);
-}
-:host-context(.frame--phone) .pp__group-head {
-  padding-inline: var(--space-1);
 }
 
 .pp__sheet {

@@ -95,10 +95,13 @@ class DspParams:
         block_size: The number of samples in a block.
         fft_size: The number of samples in the FFT window.
         noise_floor: The RMS value that counts as silence.
+        bass_gain: The factor for the bass band and the spectrum bands
+            below the bass end, before the AGC.
         window: The Hann window.
         norm: The factor that turns a band power sum into a mean square.
         bands: The ``(start, stop)`` FFT bins of bass, mid and treble.
         spectrum: The ``(start, stop)`` FFT bins of the spectrum bands.
+        spectrum_gains: The factor for each spectrum band, `bass_gain` or 1.
         flux_len: The number of blocks in the flux history.
     """
 
@@ -106,10 +109,12 @@ class DspParams:
     block_size: int
     fft_size: int
     noise_floor: float
+    bass_gain: float
     window: Samples
     norm: float
     bands: tuple[tuple[int, int], ...]
     spectrum: tuple[tuple[int, int], ...]
+    spectrum_gains: tuple[float, ...]
     flux_len: int
 
 
@@ -125,7 +130,10 @@ def _bins(lo: float, hi: float, bin_hz: float, n_bins: int) -> tuple[int, int]:
 
 
 def make_params(
-    sample_rate: int = 22050, block_size: int = 512, noise_floor: float = 0.01
+    sample_rate: int = 22050,
+    block_size: int = 512,
+    noise_floor: float = 0.01,
+    bass_gain: float = 1.0,
 ) -> DspParams:
     """Compute the constants of an analysis.
 
@@ -134,6 +142,9 @@ def make_params(
         block_size: The number of samples in a block.
         noise_floor: The RMS value that counts as silence, as a part of the
             full scale.
+        bass_gain: The factor for the bass values before the AGC. A small
+            microphone picks up less bass, so the bass values stay below
+            the noise floor without this factor.
 
     Returns:
         The constants. The FFT window holds two blocks. This doubles the
@@ -150,6 +161,7 @@ def make_params(
         block_size=block_size,
         fft_size=fft_size,
         noise_floor=noise_floor,
+        bass_gain=bass_gain,
         window=window,
         # A sine of RMS value A in a band gives a one-sided power sum of
         # A^2 * fft_size * sum(window^2) / 2, so this factor gives A^2.
@@ -158,6 +170,7 @@ def make_params(
             _bins(a, b, bin_hz, n_bins) for a, b in (BASS_HZ, MID_HZ, TREBLE_HZ)
         ),
         spectrum=tuple(_bins(a, b, bin_hz, n_bins) for a, b in pairwise(edges)),
+        spectrum_gains=tuple(bass_gain if a < BASS_HZ[1] else 1.0 for a in edges[:-1]),
         flux_len=max(1, round(FLUX_WINDOW * sample_rate / block_size)),
     )
 
@@ -322,10 +335,19 @@ def step(params: DspParams, state: Analysis, block: Samples, now: float) -> Anal
     floor = params.noise_floor
 
     level, level_peak = agc(rms(block), state.level_peak, decay, floor)
-    raw_bands = band_values(params, frame, params.bands)
+    bass, mid, treble = band_values(params, frame, params.bands)
+    raw_bands = (bass * params.bass_gain, mid, treble)
     bands, band_peaks = _agc_all(raw_bands, state.band_peaks, decay, floor)
+    raw_spectrum = tuple(
+        value * gain
+        for value, gain in zip(
+            band_values(params, frame, params.spectrum),
+            params.spectrum_gains,
+            strict=True,
+        )
+    )
     spectrum, spectrum_peaks = _agc_all(
-        band_values(params, frame, params.spectrum), state.spectrum_peaks, decay, floor
+        raw_spectrum, state.spectrum_peaks, decay, floor
     )
 
     bass = raw_bands[0]

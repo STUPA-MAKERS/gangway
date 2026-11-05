@@ -15,6 +15,7 @@ class AudioConfig(TypedDict, total=False):
         block_size: The number of samples in a block.
         noise_floor: The RMS value that counts as silence, as a part of the
             full scale.
+        bass_gain: The factor for the bass values before the analysis.
     """
 
     enabled: bool
@@ -22,6 +23,7 @@ class AudioConfig(TypedDict, total=False):
     sample_rate: int
     block_size: int
     noise_floor: float
+    bass_gain: float
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,10 @@ class AudioSettings:
             22050 Hz give about 43 blocks per second.
         noise_floor: The RMS value that counts as silence, as a part of the
             full scale. 0.01 is -40 dBFS.
+        bass_gain: The factor for the bass values before the analysis. The
+            USB microphone picks up little bass, so the default is 4
+            (+12 dB). A higher value makes the bass and the beats react to
+            quieter music.
     """
 
     enabled: bool = True
@@ -44,6 +50,7 @@ class AudioSettings:
     sample_rate: int = 22050
     block_size: int = 512
     noise_floor: float = 0.01
+    bass_gain: float = 4.0
 
 
 def _invalid(key: str, value: object) -> TypeError:
@@ -108,4 +115,5 @@ def parse_settings(section: Mapping[str, object] | None) -> AudioSettings:
         sample_rate=_int(values, "sample_rate", defaults.sample_rate),
         block_size=_int(values, "block_size", defaults.block_size),
         noise_floor=_float(values, "noise_floor", defaults.noise_floor),
+        bass_gain=_float(values, "bass_gain", defaults.bass_gain),
     )

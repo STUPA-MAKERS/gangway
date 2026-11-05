@@ -27,9 +27,9 @@ def _bursts(freq: float, period: float, length: float, seconds: float) -> dsp.Sa
     return np.where(on, 0.5 * np.sin(2 * np.pi * freq * t), 0.0)
 
 
-def _run(signal: dsp.Samples) -> list[AudioState]:
+def _run(signal: dsp.Samples, bass_gain: float = 1.0) -> list[AudioState]:
     """Feed a signal block by block and get the snapshot of each block."""
-    params = dsp.make_params(RATE, BLOCK)
+    params = dsp.make_params(RATE, BLOCK, bass_gain=bass_gain)
     state = dsp.start(params)
     blocks: Iterable[dsp.Samples] = (
         signal[i : i + BLOCK] for i in range(0, signal.size - BLOCK + 1, BLOCK)
@@ -128,6 +128,23 @@ def test_agc_is_zero_at_the_floor() -> None:
     assert dsp.agc(0.01, 0.0, 1.0, 0.01) == (0.0, 0.01)
     normalized, peak = dsp.agc(0.5, 0.2, 1.0, 0.01)
     assert (normalized, peak) == (1.0, 0.5)
+
+
+def test_bass_gain_lifts_quiet_bass_above_the_floor() -> None:
+    """A quiet bass tone is silent without the gain and shows with it."""
+    signal = _tone(60, 2.0, amplitude=0.008)
+    plain = _run(signal)[-1]
+    lifted = _run(signal, bass_gain=4.0)[-1]
+    assert (plain.bass, plain.spectrum[0]) == (0, 0)
+    assert lifted.bass > 0.2
+    assert lifted.spectrum[0] > 0.2
+    assert lifted.mid == 0
+
+
+def test_bass_gain_only_scales_the_bass_bands() -> None:
+    """The gain applies to the spectrum bands below the bass end only."""
+    params = dsp.make_params(RATE, BLOCK, bass_gain=4.0)
+    assert params.spectrum_gains == (4.0, 4.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
 
 def test_tempo_needs_enough_beats() -> None:

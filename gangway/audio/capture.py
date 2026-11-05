@@ -177,7 +177,10 @@ class AudioCapture(threading.Thread):
         self._stop_event = threading.Event()
         self._snapshot = SILENT_AUDIO
         self._params = dsp.make_params(
-            settings.sample_rate, settings.block_size, settings.noise_floor
+            settings.sample_rate,
+            settings.block_size,
+            settings.noise_floor,
+            settings.bass_gain,
         )
         self._analysis = dsp.start(self._params)
 

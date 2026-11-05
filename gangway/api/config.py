@@ -46,6 +46,7 @@ class AudioModel(BaseModel):
     sample_rate: int = Field(default=22050, gt=0)
     block_size: int = Field(default=512, gt=0)
     noise_floor: float = Field(default=0.01, ge=0)
+    bass_gain: float = Field(default=4.0, ge=0)
 
     model_config = ConfigDict(extra="forbid")
 

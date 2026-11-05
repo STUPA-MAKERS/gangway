@@ -150,7 +150,12 @@ audio:
   sample_rate: 22050     # the device must support this rate
   block_size: 512        # samples per block
   noise_floor: 0.01      # RMS that counts as silence (0.01 = -40 dBFS)
+  bass_gain: 4.0         # factor for the bass below 150 Hz (4 = +12 dB)
 ```
+
+The USB microphone picks up little bass. If the bass and the beats do not
+react to the music, increase `bass_gain`. If the beats trigger on noise,
+decrease it.
 
 The device search prefers the `hw:` device of the card, because the other
 ALSA devices resample or mix in software. The capture reads the settings

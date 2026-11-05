@@ -4,6 +4,7 @@ import logging
 import threading
 from collections.abc import Generator
 from contextlib import AbstractContextManager, contextmanager
+from itertools import pairwise
 
 import numpy as np
 import pytest
@@ -39,9 +40,17 @@ class _FakeSource:
         raise RuntimeError(msg)
 
 
-def _burst_blocks(seconds: float) -> list[Samples]:
-    t = np.arange(round(seconds * RATE)) / RATE
-    signal = np.where((t % 0.5) < 0.1, 0.5 * np.sin(2 * np.pi * 60 * t), 0.0)
+def _kick_blocks(seconds: float) -> list[Samples]:
+    """Get a kick drum every 0.5 s. The beat tracker needs some to lock.
+
+    aubio gives no beat in a hop of digital silence, so the signal has a
+    little noise, as a microphone has.
+    """
+    signal = np.random.default_rng(0).normal(0, 0.005, round(seconds * RATE))
+    t = np.arange(round(0.12 * RATE)) / RATE
+    kick = 0.5 * np.sin(2 * np.pi * (50 + 80 * np.exp(-t * 30)) * t) * np.exp(-t * 25)
+    for start in range(0, signal.size - kick.size, round(0.5 * RATE)):
+        signal[start : start + kick.size] += kick
     return [signal[i : i + BLOCK] for i in range(0, signal.size - BLOCK + 1, BLOCK)]
 
 
@@ -72,7 +81,7 @@ def test_capture_publishes_beats_and_survives_errors(
 ) -> None:
     """The thread analyzes blocks, then goes silent and retries on errors."""
     drained = threading.Event()
-    source = _FakeSource(_burst_blocks(2.0), drained)
+    source = _FakeSource(_kick_blocks(10.0), drained)
     opener = _Opener(source)
     ticks = iter(range(10_000))
     capture = AudioCapture(
@@ -86,8 +95,11 @@ def test_capture_publishes_beats_and_survives_errors(
         assert drained.wait(5)
         snapshot = capture.latest()
         assert capture.capturing
-        assert snapshot.beat_count == 4
-        assert snapshot.beats[0] == 0.0
+        # The tracker needs a few seconds to lock to the tempo.
+        late = [b for b in snapshot.beats if b > 6]
+        assert snapshot.beat_count >= 8
+        assert len(late) >= 6
+        assert all(abs(b - a - 0.5) <= 0.03 for a, b in pairwise(late))
 
         source.proceed.set()
         assert opener.failed.wait(5)

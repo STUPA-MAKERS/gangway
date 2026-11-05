@@ -2,7 +2,6 @@
 
 import math
 from collections.abc import Iterable
-from itertools import pairwise
 
 import numpy as np
 import pytest
@@ -18,13 +17,6 @@ HOP = BLOCK / RATE
 def _tone(freq: float, seconds: float, amplitude: float = 0.5) -> dsp.Samples:
     t = np.arange(round(seconds * RATE)) / RATE
     return amplitude * np.sin(2 * np.pi * freq * t)
-
-
-def _bursts(freq: float, period: float, length: float, seconds: float) -> dsp.Samples:
-    """Get a tone that is on for ``length`` seconds at the start of each period."""
-    t = np.arange(round(seconds * RATE)) / RATE
-    on = (t % period) < length
-    return np.where(on, 0.5 * np.sin(2 * np.pi * freq * t), 0.0)
 
 
 def _run(signal: dsp.Samples, bass_gain: float = 1.0) -> list[AudioState]:
@@ -55,30 +47,6 @@ def test_quiet_noise_below_the_floor_stays_silent() -> None:
     last = _run(rng.normal(0, 0.002, 2 * RATE))[-1]
     assert last.level == 0
     assert last.beat_count == 0
-
-
-def test_bass_bursts_give_beats_at_the_burst_period() -> None:
-    """A 60 Hz burst every 0.5 s gives one beat per burst."""
-    last = _run(_bursts(60, period=0.5, length=0.1, seconds=4.0))[-1]
-    intervals = [b - a for a, b in pairwise(last.beats)]
-    assert last.beat_count == 8
-    assert all(abs(i - 0.5) <= 2 * HOP for i in intervals)
-    assert math.isclose(last.tempo, 120, rel_tol=0.05)
-
-
-def test_fast_bursts_respect_the_refractory_period() -> None:
-    """Bursts faster than the refractory period do not trigger each time."""
-    last = _run(_bursts(60, period=0.1, length=0.04, seconds=3.0))[-1]
-    intervals = [b - a for a, b in pairwise(last.beats)]
-    assert intervals
-    assert min(intervals) >= dsp.REFRACTORY
-
-
-def test_steady_tone_gives_one_beat_only() -> None:
-    """A steady bass tone gives a beat at its start and then no more."""
-    snapshots = _run(_tone(60, 4.0))
-    assert snapshots[-1].beat_count == 1
-    assert snapshots[-1].beats[0] < 0.1
 
 
 def test_bass_tone_raises_bass_not_treble() -> None:
@@ -147,21 +115,19 @@ def test_bass_gain_only_scales_the_bass_bands() -> None:
     assert params.spectrum_gains == (4.0, 4.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
 
+def test_step_keeps_the_given_beats() -> None:
+    """`step` keeps the beat times it gets and drops the old ones."""
+    params = dsp.make_params(RATE, BLOCK)
+    state = dsp.start(params)
+    block = np.zeros(BLOCK)
+    for now, beat in ((1.0, 0.98), (1.5, None), (2.0, 1.99), (12.0, 11.9)):
+        state = dsp.step(params, state, block, now, beat)
+    assert state.snapshot.beat_count == 3
+    assert state.snapshot.beats == (11.9,)
+    assert state.snapshot.last_beat == 11.9
+
+
 def test_tempo_needs_enough_beats() -> None:
     """The tempo is 0 with too few beats in the window."""
     assert dsp.tempo((1.0, 1.5), 2.0) == 0
     assert math.isclose(dsp.tempo((1.0, 1.5, 2.0, 2.5), 2.5), 120)
-
-
-def test_bass_bursts_over_other_sound_still_give_beats() -> None:
-    """A steady mid tone and noise do not hide or add bass beats."""
-    rng = np.random.default_rng(2)
-    seconds = 4.0
-    signal = (
-        _bursts(60, period=0.5, length=0.1, seconds=seconds)
-        + _tone(1000, seconds, 0.3)
-        + rng.normal(0, 0.01, round(seconds * RATE))
-    )
-    last = _run(signal)[-1]
-    assert last.beat_count == 8
-    assert all(abs(b % 0.5) <= 2 * HOP for b in last.beats)

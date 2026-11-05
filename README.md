@@ -116,7 +116,14 @@ the LED data. The USB microphone does not use PWM0.
        8000 Hz): the energy of each band, from an FFT with a Hann window
        over the last 1024 samples.
    *   `spectrum`: 8 narrower bands from 40 to 8000 Hz.
-   *   `beats`, `last_beat`, `beat_count` and `tempo`: the beat detection.
+   *   `beats`, `last_beat`, `beat_count` and `tempo`: the beats from
+       `gangway/audio/beats.py`. It uses the online beat tracker of
+       [aubio](https://aubio.org/), which runs on the Pi. aubio estimates
+       the tempo from the onsets and puts the beats on a grid with that
+       tempo. Thus a weak kick still gives a beat, and a sound off the
+       grid gives none. The tracker needs a few seconds of music to lock
+       to a new tempo. No beat shows while the level of the last second is
+       below the noise floor.
 3. The LED controller puts the latest snapshot into the scene context of
    each frame (`ctx.audio`). It changes the beat times to the clock of the
    `time` argument of the animations.

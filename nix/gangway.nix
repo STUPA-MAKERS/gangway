@@ -11,6 +11,8 @@
     rebuild the backend
   - `rpi-ws2805` — the LED driver from ./rpi-ws2805.nix
   - `sounddevice` — reads the USB microphone for the audio animations
+  - `aubio-ledfx` — the beat tracker of the audio analysis. nixpkgs replaced
+    the `aubio` package by this fork, which keeps the `aubio` module name
 
   # Defines
   - `passthru.pythonDeps` — the run-time dependencies as a function of a
@@ -31,6 +33,7 @@
 
 let
   pythonDeps = ps: [
+    ps.aubio-ledfx
     ps.fastapi
     ps.numpy
     ps.opencv4

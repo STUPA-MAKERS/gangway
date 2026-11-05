@@ -12,6 +12,7 @@ import numpy as np
 
 from ..types import SILENT_AUDIO, AudioState
 from . import dsp
+from .beats import BeatTracker
 from .settings import AudioSettings
 
 if TYPE_CHECKING:
@@ -206,11 +207,18 @@ class AudioCapture(threading.Thread):
 
     def _capture(self) -> None:
         """Read blocks until the stop or an error."""
+        tracker = BeatTracker(self.settings.sample_rate, self.settings.noise_floor)
         with self._open_stream(self.settings) as source:
             self.capturing = True
             while not self._stop_event.is_set():
+                block = source.read()
+                now = self._clock()
                 self._analysis = dsp.step(
-                    self._params, self._analysis, source.read(), self._clock()
+                    self._params,
+                    self._analysis,
+                    block,
+                    now,
+                    tracker.feed(block, now),
                 )
                 self._snapshot = self._analysis.snapshot
 

@@ -18,7 +18,8 @@ Gangway is a Python-based lighting control system for an interactive art install
 
 ### 2b. Sound Input (`./gangway/audio/`)
 - **`capture.py`**: `AudioCapture`, a thread that reads the USB microphone (AK5371) with sounddevice. On an error it logs once, publishes `SILENT_AUDIO` and retries every 5 s.
-- **`dsp.py`**: Pure functions that turn each block of samples into an `AudioState` snapshot: level, bass/mid/treble, 8 spectrum bands, beats (bass onset with an adaptive threshold) and tempo. Test them with synthetic signals, not with a device.
+- **`dsp.py`**: Pure functions that turn each block of samples into an `AudioState` snapshot: level, bass/mid/treble, 8 spectrum bands, the recent beats and the tempo. Test them with synthetic signals, not with a device.
+- **`beats.py`**: `BeatTracker`, the online beat tracker of aubio (the nixpkgs package `aubio-ledfx`). It puts the beats on a tempo grid. `capture.py` gives its beat time to `dsp.step`. aubio gives no beat in a hop of digital silence, so give the test signals a little noise.
 - **`settings.py`**: The optional `audio:` section of `config.yaml`.
 
 ### 3. Animation System (`./gangway/animations/`)

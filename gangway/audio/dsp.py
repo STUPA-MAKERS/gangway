@@ -12,10 +12,8 @@ The functions use these methods:
 - Each value goes through an automatic gain control (AGC). The reference is
   the recent peak of the value. The peak follows a rise at once and halves
   every `AGC_HALF_LIFE` seconds. A noise floor keeps silence at 0.
-- A beat is an onset in the bass band: the rise of the bass value from the
-  last block (the flux) is larger than the mean plus `ONSET_K` standard
-  deviations of the flux over the last `FLUX_WINDOW` seconds. A beat cannot
-  follow the last beat in less than `REFRACTORY` seconds.
+- The beats come from outside, from `gangway.audio.beats.BeatTracker`.
+  `step` keeps the recent beat times and estimates the tempo from them.
 """
 
 import math
@@ -57,22 +55,6 @@ Without this limit, a quiet room makes the peak decay to the noise. Then
 the noise itself gives values near 1.
 """
 
-FLUX_WINDOW = 1.0
-"""The time in seconds of the flux history for the onset threshold."""
-
-ONSET_K = 1.5
-"""The number of standard deviations above the mean flux for a beat."""
-
-MIN_ONSET = 0.1
-"""The smallest flux for a beat, as a part of the AGC reference of the bass.
-
-The adaptive threshold alone triggers on very small changes after a long
-steady sound, because the standard deviation is then near 0.
-"""
-
-REFRACTORY = 0.25
-"""The shortest time in seconds between two beats."""
-
 BEAT_HISTORY = 10.0
 """The time in seconds that a beat stays in `AudioState.beats`."""
 
@@ -102,7 +84,6 @@ class DspParams:
         bands: The ``(start, stop)`` FFT bins of bass, mid and treble.
         spectrum: The ``(start, stop)`` FFT bins of the spectrum bands.
         spectrum_gains: The factor for each spectrum band, `bass_gain` or 1.
-        flux_len: The number of blocks in the flux history.
     """
 
     sample_rate: int
@@ -115,7 +96,6 @@ class DspParams:
     bands: tuple[tuple[int, int], ...]
     spectrum: tuple[tuple[int, int], ...]
     spectrum_gains: tuple[float, ...]
-    flux_len: int
 
 
 def _bins(lo: float, hi: float, bin_hz: float, n_bins: int) -> tuple[int, int]:
@@ -171,7 +151,6 @@ def make_params(
         ),
         spectrum=tuple(_bins(a, b, bin_hz, n_bins) for a, b in pairwise(edges)),
         spectrum_gains=tuple(bass_gain if a < BASS_HZ[1] else 1.0 for a in edges[:-1]),
-        flux_len=max(1, round(FLUX_WINDOW * sample_rate / block_size)),
     )
 
 
@@ -184,8 +163,6 @@ class Analysis:
         level_peak: The AGC peak of the level.
         band_peaks: The AGC peaks of bass, mid and treble.
         spectrum_peaks: The AGC peaks of the spectrum bands.
-        prev_bass: The bass value of the last block, before the AGC.
-        flux: The flux history, oldest first.
         beats: The recent beat times, oldest first.
         beat_count: The number of beats since the start.
         snapshot: The result for the animations.
@@ -195,8 +172,6 @@ class Analysis:
     level_peak: float = 0.0
     band_peaks: tuple[float, ...] = (0.0, 0.0, 0.0)
     spectrum_peaks: tuple[float, ...] = ()
-    prev_bass: float = 0.0
-    flux: tuple[float, ...] = ()
     beats: tuple[float, ...] = ()
     beat_count: int = 0
     snapshot: AudioState = SILENT_AUDIO
@@ -277,30 +252,6 @@ def _agc_all(
     return tuple(n for n, _ in results), tuple(p for _, p in results)
 
 
-def is_onset(
-    flux: float, history: tuple[float, ...], reference: float, since_beat: float
-) -> bool:
-    """Check if a bass flux is a beat.
-
-    Args:
-        flux: The rise of the bass value from the last block.
-        history: The flux of the earlier blocks.
-        reference: The AGC reference of the bass value.
-        since_beat: The time since the last beat in seconds.
-
-    Returns:
-        True if the flux is above the adaptive threshold and above the
-        minimum, and the refractory period is over.
-    """
-    mean = statistics.fmean(history) if history else 0.0
-    std = statistics.pstdev(history, mean) if len(history) > 1 else 0.0
-    return (
-        since_beat >= REFRACTORY
-        and flux > mean + ONSET_K * std
-        and flux > MIN_ONSET * reference
-    )
-
-
 def tempo(beats: tuple[float, ...], now: float) -> float:
     """Estimate the tempo from the recent beats.
 
@@ -318,7 +269,13 @@ def tempo(beats: tuple[float, ...], now: float) -> float:
     return 60.0 / statistics.median(b - a for a, b in pairwise(recent))
 
 
-def step(params: DspParams, state: Analysis, block: Samples, now: float) -> Analysis:
+def step(
+    params: DspParams,
+    state: Analysis,
+    block: Samples,
+    now: float,
+    beat: float | None = None,
+) -> Analysis:
     """Analyze one block.
 
     Args:
@@ -326,6 +283,7 @@ def step(params: DspParams, state: Analysis, block: Samples, now: float) -> Anal
         state: The state after the earlier blocks.
         block: The new mono samples.
         now: The time of the block in seconds.
+        beat: The time of the beat in this block, or None.
 
     Returns:
         The new state. Its `Analysis.snapshot` holds the result.
@@ -350,16 +308,11 @@ def step(params: DspParams, state: Analysis, block: Samples, now: float) -> Anal
         raw_spectrum, state.spectrum_peaks, decay, floor
     )
 
-    bass = raw_bands[0]
-    flux = max(bass - state.prev_bass, 0.0)
-    last_beat = state.beats[-1] if state.beats else -math.inf
-    beat = is_onset(
-        flux, state.flux, max(band_peaks[0], floor * MIN_RANGE), now - last_beat
-    )
-    beats = tuple(
-        t for t in (*state.beats, *((now,) if beat else ())) if now - t <= BEAT_HISTORY
-    )[-MAX_BEATS:]
-    beat_count = state.beat_count + beat
+    new = () if beat is None else (beat,)
+    beats = tuple(t for t in (*state.beats, *new) if now - t <= BEAT_HISTORY)[
+        -MAX_BEATS:
+    ]
+    beat_count = state.beat_count + len(new)
 
     return replace(
         state,
@@ -367,8 +320,6 @@ def step(params: DspParams, state: Analysis, block: Samples, now: float) -> Anal
         level_peak=level_peak,
         band_peaks=band_peaks,
         spectrum_peaks=spectrum_peaks,
-        prev_bass=bass,
-        flux=(*state.flux, flux)[-params.flux_len :],
         beats=beats,
         beat_count=beat_count,
         snapshot=AudioState(

@@ -11,13 +11,14 @@ import pytest
 
 from gangway.audio import (
     AudioCapture,
+    AudioProcess,
     AudioSettings,
     BlockSource,
     find_device,
     parse_settings,
 )
 from gangway.audio.dsp import Samples
-from gangway.types import SILENT_AUDIO
+from gangway.types import SILENT_AUDIO, AudioState
 
 RATE = 22050
 BLOCK = 512
@@ -111,6 +112,36 @@ def test_capture_publishes_beats_and_survives_errors(
     warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
     assert len(warnings) == 1
     assert "device unplugged" in warnings[0].getMessage()
+
+
+def test_capture_calls_on_snapshot_for_each_block() -> None:
+    """The callback gets each snapshot with the capturing flag."""
+    drained = threading.Event()
+    source = _FakeSource(_kick_blocks(1.0), drained)
+    received: list[tuple[AudioState, bool]] = []
+    capture = AudioCapture(
+        AudioSettings(),
+        open_stream=_Opener(source),
+        on_snapshot=lambda snapshot, capturing: received.append((snapshot, capturing)),
+        retry_interval=10,
+    )
+    capture.start()
+    assert drained.wait(5)
+    assert len(received) == len(_kick_blocks(1.0))
+    assert all(capturing for _, capturing in received)
+    source.proceed.set()
+    capture.stop(timeout=5)
+    assert received[-1] == (SILENT_AUDIO, False)
+
+
+def test_process_without_a_device_is_silent_and_stops() -> None:
+    """A child process with no matching device gives silence and stops."""
+    process = AudioProcess(AudioSettings(device="no such device"))
+    process.start()
+    assert process.latest() is SILENT_AUDIO
+    assert not process.capturing
+    process.stop(timeout=5)
+    assert not process.is_alive()
 
 
 def test_capture_without_start_is_silent() -> None:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Start the gangway LED controller.
 
-The program starts the microphone thread, the LED render thread, the Xovis
+The program starts the microphone process, the LED render thread, the Xovis
 receiver on port 8081 and the API on port 8082. It runs until Ctrl+C.
 """
 
@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 from gangway import config
 from gangway.api import app
-from gangway.audio import AudioCapture
+from gangway.audio import AudioProcess
 from gangway.led_controller import LEDController
 from gangway.state import STATE
 from gangway.types import TrackedPoint
@@ -43,7 +43,7 @@ async def main() -> None:
 
     print("Starting components...")
 
-    audio_capture = AudioCapture(config.CONFIG.AUDIO)
+    audio_capture = AudioProcess(config.CONFIG.AUDIO)
     if config.CONFIG.AUDIO.enabled:
         STATE.audio_capture = audio_capture
         audio_capture.start()
@@ -88,7 +88,7 @@ async def main() -> None:
             print(f"Error stopping LED Controller: {e}")
 
         # A blocked read of the device takes one block, so a short wait is
-        # enough. The thread is a daemon and cannot hold the exit.
+        # enough. After it, the child process gets SIGTERM.
         audio_capture.stop(timeout=1.0)
 
 

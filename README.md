@@ -108,7 +108,9 @@ the LED data. The USB microphone does not use PWM0.
 1. The thread `gangway.audio.AudioCapture` reads blocks of 512 samples at
    22050 Hz from the microphone (about 43 blocks each second). It uses
    [sounddevice](https://python-sounddevice.readthedocs.io/) and PortAudio
-   with ALSA.
+   with ALSA. `gangway.audio.AudioProcess` runs this thread in a child
+   process, so that the LED render loop cannot hold it back. The child
+   sends each snapshot to the main process through a pipe.
 2. For each block, the pure functions in `gangway/audio/dsp.py` calculate a
    new `AudioState` snapshot:
    *   `level`: the loudness (RMS) of the block.

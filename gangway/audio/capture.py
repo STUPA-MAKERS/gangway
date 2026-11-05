@@ -159,6 +159,7 @@ class AudioCapture(threading.Thread):
         open_stream: StreamOpener = open_sounddevice,
         clock: Callable[[], float] = time.monotonic,
         retry_interval: float = RETRY_INTERVAL,
+        on_snapshot: Callable[[AudioState, bool], None] | None = None,
     ) -> None:
         """Prepare the thread. Call `start` to open the device.
 
@@ -169,12 +170,16 @@ class AudioCapture(threading.Thread):
                 this clock.
             retry_interval: The time in seconds between two attempts to
                 open the device.
+            on_snapshot: Called with each new snapshot and the
+                `capturing` flag. `AudioProcess` sends them to the parent
+                process with it.
         """
         super().__init__(name="audio-capture", daemon=True)
         self.settings = settings
         self._open_stream = open_stream
         self._clock = clock
         self._retry_interval = retry_interval
+        self._on_snapshot = on_snapshot
         self._stop_event = threading.Event()
         self._snapshot = SILENT_AUDIO
         self._params = dsp.make_params(
@@ -205,6 +210,11 @@ class AudioCapture(threading.Thread):
         if self.is_alive():
             self.join(timeout)
 
+    def _publish(self, snapshot: AudioState) -> None:
+        self._snapshot = snapshot
+        if self._on_snapshot is not None:
+            self._on_snapshot(snapshot, self.capturing)
+
     def _capture(self) -> None:
         """Read blocks until the stop or an error."""
         tracker = BeatTracker(self.settings.sample_rate, self.settings.noise_floor)
@@ -220,7 +230,7 @@ class AudioCapture(threading.Thread):
                     now,
                     tracker.feed(block, now),
                 )
-                self._snapshot = self._analysis.snapshot
+                self._publish(self._analysis.snapshot)
 
     @override
     def run(self) -> None:
@@ -237,7 +247,7 @@ class AudioCapture(threading.Thread):
                     _LOG.warning("Audio capture failed, retrying: %s", e)
                 failed = True
                 self.capturing = False
-                self._snapshot = SILENT_AUDIO
+                self._publish(SILENT_AUDIO)
                 # The next attempt starts with a silent window, but the beat
                 # count goes on, so that `beat_switch` does not jump back.
                 self._analysis = replace(

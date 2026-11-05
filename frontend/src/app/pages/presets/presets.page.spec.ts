@@ -25,6 +25,13 @@ describe('PresetsPage', () => {
     expect(screen.getByText('Rainbow')).toBeInTheDocument();
   });
 
+  it('names the group of presets without a count', async () => {
+    await setup();
+    const head = await screen.findByRole('heading', { level: 2, name: 'Saved' });
+    expect(head.textContent?.trim()).toBe('Saved');
+    expect(screen.getByRole('region', { name: 'Saved' })).toContainElement(screen.getByText('Musik'));
+  });
+
   it('opens a preset in the editor', async () => {
     const { backend } = await setup('Musik');
     backend.expectOne('/api/presets/Musik').flush({ name: 'Musik', animation: { off: {} } });

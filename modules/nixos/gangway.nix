@@ -12,9 +12,9 @@
     under binfmt emulation takes many minutes
 
   # Defines
-  - `services.gangway` — `enable`, `package`, `frontendPackage` and
-    `stateDir`. `frontendPackage` holds the static files of the web UI,
-    which nginx serves (modules/nixos/services.nix)
+  - `services.gangway` — `enable`, `package`, `frontendPackage`,
+    `stateDir` and `micGain`. `frontendPackage` holds the static files of
+    the web UI, which nginx serves (modules/nixos/services.nix)
   - `systemd.services.gangway` — the LED controller, the Xovis receiver on
     8081 and the API on 8082. It runs as root, because the WS2805 driver
     maps /dev/mem to drive PWM0 through DMA. `preStart` copies the packaged
@@ -22,6 +22,9 @@
     not there yet. It never overwrites a file, so the changes from the web
     UI stay. `cp --update=none` skips with exit code 0, where `cp -n` fails
     on newer coreutils. `GANGWAY_CONFIG` points the app at that copy.
+    `preStart` also sets the capture gain of the USB microphone to `micGain`.
+    At 0 dB the music in the room stays near -50 dBFS, below the noise
+    floor of the audio analysis. Without the microphone, it skips this step.
     The `gangway-env` secret holds `API_KEY=…`, the key the web UI asks for
 */
 { withSystem, ... }:
@@ -66,6 +69,16 @@
             /var/lib.
           '';
         };
+
+        micGain = lib.mkOption {
+          type = lib.types.str;
+          default = "18dB";
+          example = "24dB";
+          description = ''
+            The capture gain of the AK5371 USB microphone, as an amixer
+            value. The range is -31 dB to +24 dB.
+          '';
+        };
       };
 
       config = lib.mkIf cfg.enable {
@@ -82,6 +95,8 @@
             fi
             mkdir -p ${cfg.stateDir}/presets
             cp --update=none --no-preserve=mode ${cfg.package}/share/gangway/presets/*.yaml ${cfg.stateDir}/presets/
+            ${pkgs.alsa-utils}/bin/amixer -q -c AK5371 sset Mic ${lib.escapeShellArg cfg.micGain} \
+              || echo "The USB microphone is not there; the capture gain stays as it is"
           '';
           serviceConfig = {
             ExecStart = lib.getExe cfg.package;

@@ -2,6 +2,10 @@
 
 Gangway is a Python-based lighting control system for an interactive art installation. It uses a Raspberry Pi 4B to drive WS2805 LED strips, reacting to people moving through the space using a Xovis PC2-L person counter.
 
+## Specs
+
+`specs/` holds the binding rules, one rule per file. `specs/README.md` has the index. A spec wins over this file and over a code comment. A change request starts as a spec: write or change the spec first, and start the code after the owner approves it. Check the specs with `python3 scripts/check_specs.py`, and write the index again with `--write`. `tests/test_specs.py` runs the same check.
+
 ## Key Components
 
 ### 1. Core Logic (`./gangway/`)

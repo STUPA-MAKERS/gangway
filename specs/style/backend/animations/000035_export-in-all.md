@@ -2,7 +2,7 @@
 id: "000035"
 title: An animation is exported by its package
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

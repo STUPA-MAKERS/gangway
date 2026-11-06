@@ -80,7 +80,10 @@ class _Opener:
 def test_capture_publishes_beats_and_survives_errors(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """The thread analyzes blocks, then goes silent and retries on errors."""
+    """The thread analyzes blocks, then goes silent and retries on errors.
+
+    §F/audio/capture/000076
+    """
     drained = threading.Event()
     source = _FakeSource(_kick_blocks(10.0), drained)
     opener = _Opener(source)
@@ -135,7 +138,10 @@ def test_capture_calls_on_snapshot_for_each_block() -> None:
 
 
 def test_process_without_a_device_is_silent_and_stops() -> None:
-    """A child process with no matching device gives silence and stops."""
+    """A child process with no matching device gives silence and stops.
+
+    §F/audio/capture/000075
+    """
     process = AudioProcess(AudioSettings(device="no such device"))
     process.start()
     assert process.latest() is SILENT_AUDIO
@@ -152,7 +158,10 @@ def test_capture_without_start_is_silent() -> None:
 
 
 def test_find_device_prefers_the_direct_hardware_device() -> None:
-    """The search matches a part of the name and prefers an hw: device."""
+    """The search matches a part of the name and prefers an hw: device.
+
+    §F/audio/capture/000078
+    """
     devices: list[dict[str, object]] = [
         {"name": "HDA Intel PCH: HDMI 0 (hw:0,3)", "max_input_channels": 0},
         {"name": "sysdefault:CARD=AK5371", "max_input_channels": 2},
@@ -166,7 +175,10 @@ def test_find_device_prefers_the_direct_hardware_device() -> None:
 
 
 def test_parse_settings_reads_the_section() -> None:
-    """A missing section gives the defaults, and keys override them."""
+    """A missing section gives the defaults, and keys override them.
+
+    §F/audio/settings/000079
+    """
     assert parse_settings(None) == AudioSettings()
     settings = parse_settings({"device": 3, "sample_rate": 44100, "noise_floor": 0})
     assert settings == AudioSettings(device=3, sample_rate=44100, noise_floor=0.0)
@@ -184,6 +196,9 @@ def test_parse_settings_reads_the_section() -> None:
 def test_parse_settings_rejects_bad_values(
     section: dict[str, object], error: type[Exception]
 ) -> None:
-    """A wrong type, a bad number or an unknown key raises an error."""
+    """A wrong type, a bad number or an unknown key raises an error.
+
+    §F/audio/settings/000080
+    """
     with pytest.raises(error):
         _ = parse_settings(section)

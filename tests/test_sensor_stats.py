@@ -10,6 +10,7 @@ import requests
 
 from gangway.api.stats import counts_for, prepare_heatmap, summary_for
 from gangway.xovis.sensor_api import (
+    XOVIS_URL,
     Count,
     SensorClient,
     SensorError,
@@ -88,7 +89,10 @@ class _Sensor:
 
 
 def test_parse_counts_reads_the_csv_of_the_sensor() -> None:
-    """The CSV gives one count for each hour: backward is in, forward is out."""
+    """The CSV gives one count for each hour: backward is in, forward is out.
+
+    §F/sensor/statistics/000067
+    """
     text = "timestamp,forward-count,backward-count\n1793358000000,11,10\n"
 
     (count,) = parse_counts(text, BERLIN)
@@ -103,7 +107,10 @@ def test_parse_counts_refuses_an_error_text() -> None:
 
 
 def test_bucket_sums_hours_by_local_day_across_the_dst_change() -> None:
-    """The night of the change to winter time has 25 hours, all in one day."""
+    """The night of the change to winter time has 25 hours, all in one day.
+
+    §F/sensor/statistics/000071
+    """
     start = datetime(2026, 10, 25, 0, tzinfo=BERLIN)
     hourly = parse_counts(_csv(start, [(1, 2)] * 26), BERLIN)
 
@@ -116,7 +123,10 @@ def test_bucket_sums_hours_by_local_day_across_the_dst_change() -> None:
 
 
 def test_start_of_week_is_monday_midnight() -> None:
-    """A Friday goes back to the Monday of its week."""
+    """A Friday goes back to the Monday of its week.
+
+    §F/sensor/statistics/000071
+    """
     friday = datetime(2026, 10, 30, 15, 12, tzinfo=BERLIN)
 
     assert start_of_week(friday) == datetime(2026, 10, 26, tzinfo=BERLIN)
@@ -140,7 +150,10 @@ def test_parse_status_reads_the_status_and_the_info() -> None:
 
 
 def test_counts_for_a_month_gives_one_bucket_per_day() -> None:
-    """The month range sums the hours of the sensor into 30 local days."""
+    """The month range sums the hours of the sensor into 30 local days.
+
+    §F/sensor/statistics/000070
+    """
     now = datetime(2026, 10, 30, 15, 30, tzinfo=BERLIN)
 
     counts = counts_for(SensorClient(fetch=_Sensor()), "month", now)
@@ -163,7 +176,10 @@ def test_summary_for_sums_today_and_the_week() -> None:
 
 
 def test_client_caches_a_request() -> None:
-    """A second request within the cache time does not reach the sensor."""
+    """A second request within the cache time does not reach the sensor.
+
+    §F/sensor/statistics/000072
+    """
     sensor = _Sensor()
     clock = iter([0.0, 10.0, 100.0])
     client = SensorClient(fetch=sensor, clock=lambda: next(clock))
@@ -177,7 +193,10 @@ def test_client_caches_a_request() -> None:
 
 
 def test_client_reports_an_unreachable_sensor() -> None:
-    """A connection error becomes a SensorError."""
+    """A connection error becomes a SensorError.
+
+    §F/sensor/statistics/000073
+    """
 
     def offline(_path: str, _params: dict[str, str]) -> requests.Response:
         raise requests.ConnectionError("no route to host")
@@ -187,7 +206,10 @@ def test_client_reports_an_unreachable_sensor() -> None:
 
 
 def test_prepare_heatmap_crops_the_frame() -> None:
-    """The transparent frame goes away, and the picture keeps its orientation."""
+    """The transparent frame goes away, and the picture keeps its orientation.
+
+    §F/sensor/statistics/000074
+    """
     image = np.zeros((6, 8, 4), np.uint8)
     image[:, :, :3] = 255
     image[1:5, 2:6] = (0, 0, 255, 255)
@@ -206,7 +228,10 @@ def test_prepare_heatmap_crops_the_frame() -> None:
 
 
 def test_occupancy_adds_in_takes_out_and_never_goes_below_zero() -> None:
-    """More persons out than in keeps the estimate at 0."""
+    """More persons out than in keeps the estimate at 0.
+
+    §F/sensor/statistics/000069
+    """
     start = datetime(2026, 10, 30, 10, tzinfo=BERLIN)
     hourly = parse_counts(_csv(start, [(5, 1), (2, 3), (0, 9), (4, 0)]), BERLIN)
 
@@ -214,7 +239,10 @@ def test_occupancy_adds_in_takes_out_and_never_goes_below_zero() -> None:
 
 
 def test_occupancy_starts_at_zero_at_four_in_the_morning() -> None:
-    """A person who was not counted out does not stay in the next day."""
+    """A person who was not counted out does not stay in the next day.
+
+    §F/sensor/statistics/000068
+    """
     start = datetime(2026, 10, 30, 2, tzinfo=BERLIN)
     hourly = parse_counts(_csv(start, [(3, 0), (0, 0), (1, 0)]), BERLIN)
 
@@ -238,3 +266,43 @@ def test_summary_has_all_time_and_the_room_estimate() -> None:
 
     assert summary["all_time"]["entered"] > summary["last_30_days"]["entered"]
     assert summary["in_room"] == 0
+
+
+READ_ONLY_PATHS = {
+    "/api/count-data/select/csv",
+    "/api/info/status",
+    "/api/info",
+    "/api/maps/heat/export",
+}
+
+
+def test_client_sends_only_get_to_the_read_only_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Counts, status and heat map use GET on the four fixed paths only.
+
+    §NF/security/sensor/000096
+    """
+    calls: list[tuple[str, str]] = []
+    bodies = {
+        "/api/count-data/select/csv": _csv(datetime(2026, 10, 30, tzinfo=BERLIN), []),
+        "/api/info/status": STATUS_XML,
+        "/api/info": INFO_XML,
+        "/api/maps/heat/export": "png",
+    }
+
+    def request(method: str, url: str, **_kwargs: object) -> requests.Response:
+        path = url.removeprefix(XOVIS_URL)
+        calls.append((method.upper(), path))
+        return _Response(bodies[path])
+
+    monkeypatch.setattr(requests.api, "request", request)
+    client = SensorClient()
+    since = datetime(2026, 10, 30, tzinfo=BERLIN)
+
+    client.hourly(since, since + timedelta(hours=1))
+    client.status()
+    client.heatmap()
+
+    assert {method for method, _ in calls} == {"GET"}
+    assert {path for _, path in calls} == READ_ONLY_PATHS

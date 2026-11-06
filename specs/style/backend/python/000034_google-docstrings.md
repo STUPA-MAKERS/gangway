@@ -2,7 +2,7 @@
 id: "000034"
 title: Docstrings use the Google convention
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

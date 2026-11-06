@@ -2,7 +2,7 @@
 id: "000067"
 title: The counts come from count line 0
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

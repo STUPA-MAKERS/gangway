@@ -2,7 +2,7 @@
 id: "000041"
 title: LED positions follow the strips
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

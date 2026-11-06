@@ -54,6 +54,7 @@ const ANIMATIONS: AnimationInfo[] = [
 ];
 
 describe('paramControl', () => {
+  // §F/web-ui/editor/000092
   it('maps the backend types to controls', () => {
     expect(paramControl(ANIMATIONS[0].params[0], 'blend', false)).toBe('animation-list');
     expect(paramControl(ANIMATIONS[0].params[1], 'blend', false)).toBe('literal');

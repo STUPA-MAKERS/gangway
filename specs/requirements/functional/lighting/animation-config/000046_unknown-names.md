@@ -2,7 +2,7 @@
 id: "000046"
 title: An unknown function or parameter is refused
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

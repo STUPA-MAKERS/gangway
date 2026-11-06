@@ -2,7 +2,7 @@
 id: "000075"
 title: The microphone runs in a child process
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

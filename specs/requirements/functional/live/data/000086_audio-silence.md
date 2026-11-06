@@ -2,7 +2,7 @@
 id: "000086"
 title: The audio data is silent without a capture
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

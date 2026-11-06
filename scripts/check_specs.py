@@ -4,7 +4,8 @@
 The script checks the rules for specs (`specs/style/specs/`): the file name,
 the place in the tree, the front matter (also `implementation`), the heading,
 the labels, `must` in the rule text, the scope paths, `replaced_by`, unique
-numbers, the index, and every `§` reference in the code. It needs only the
+numbers, the index, every `§` reference in the code, and the `§` reference in
+each Python test of `tests`. It needs only the
 Python standard library.
 
 Usage:
@@ -223,6 +224,37 @@ def _check_body(spec: Spec) -> list[str]:
     return errors
 
 
+def _test_source(path: Path, name: str) -> str | None:
+    """Return the source of a test function up to the next definition."""
+    function = name.rsplit(".", 1)[-1]
+    match = re.search(
+        rf"^\s*def {re.escape(function)}\(.*?(?=^\s*(?:def|class) |\Z)",
+        path.read_text(encoding="utf-8"),
+        flags=re.M | re.S,
+    )
+    return match.group(0) if match else None
+
+
+def _check_test_refs(spec: Spec) -> list[str]:
+    """Check that each Python test in `tests` names the rule (000030)."""
+    rel = spec.path.relative_to(SPECS)
+    tests = spec.meta.get("tests", [])
+    errors: list[str] = []
+    for entry in tests if isinstance(tests, list) else [tests]:
+        file, _, name = entry.partition(":")
+        path = ROOT / file
+        if path.suffix != ".py" or not path.is_file():
+            continue
+        source = _test_source(path, name)
+        if source is None:
+            errors.append(f"{rel}: test {entry!r} does not exist (000002)")
+        elif f"§{spec.full_id}" not in source:
+            errors.append(
+                f"{rel}: test {entry!r} does not name §{spec.full_id} (000030)"
+            )
+    return errors
+
+
 def _index(specs: list[Spec]) -> str:
     """Return the index table of README.md."""
     rows = [
@@ -298,6 +330,7 @@ def main(argv: list[str]) -> int:
         numbers[number] = spec.path.relative_to(SPECS)
         errors += _check_meta(spec, ids)
         errors += _check_body(spec)
+        errors += _check_test_refs(spec)
     if "--write" in argv:
         README.write_text(_readme(specs), encoding="utf-8")
     elif README.read_text(encoding="utf-8") != _readme(specs):

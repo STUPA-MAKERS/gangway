@@ -2,11 +2,12 @@
 id: "000062"
 title: The sensor events arrive on port 8081
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:
   - "tests/test_xovis.py:test_server_notifies_both_subscriber_kinds"
+  - "tests/test_xovis.py:test_receiver_answers_a_post"
 implementation:
   - gangway/xovis/server.py
 scope:
@@ -18,4 +19,5 @@ scope:
 The Xovis receiver must accept `POST` requests with a JSON list of events on port 8081. It must
 answer 200 for valid JSON and 400 for invalid JSON. It must accept a chunked body.
 
-Test: `tests/test_xovis.py:test_server_notifies_both_subscriber_kinds`.
+Test: `tests/test_xovis.py:test_server_notifies_both_subscriber_kinds`,
+`tests/test_xovis.py:test_receiver_answers_a_post`.

@@ -2,7 +2,7 @@
 id: "000091"
 title: Old hash links go to the new routes
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:
@@ -18,4 +18,4 @@ The root path must redirect `#viz` to `/live`, `#animations` to `/animation` and
 
 Reason: Bookmarks of the old Next.js app must work.
 
-Test: Review.
+Test: `frontend/src/app/app.routes.spec.ts`.

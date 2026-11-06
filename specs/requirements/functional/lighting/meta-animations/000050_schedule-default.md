@@ -2,7 +2,7 @@
 id: "000050"
 title: An invalid schedule window uses 18:00 to 06:00
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

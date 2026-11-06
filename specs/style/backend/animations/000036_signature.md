@@ -2,7 +2,7 @@
 id: "000036"
 title: An animation is a function of time, context, LED and persons
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

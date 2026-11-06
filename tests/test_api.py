@@ -53,12 +53,18 @@ def controller(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 def test_auth_missing_key(client: TestClient) -> None:
-    """A request with no API key gets 403."""
+    """A request with no API key gets 403.
+
+    §NF/security/access/000094
+    """
     assert client.get("/api/config/").status_code == 403
 
 
 def test_auth_invalid_key(client: TestClient) -> None:
-    """A request with a wrong API key gets 403."""
+    """A request with a wrong API key gets 403.
+
+    §NF/security/access/000094
+    """
     response = client.get("/api/config/", headers={"X-API-Key": "wrong"})
     assert response.status_code == 403
 
@@ -105,7 +111,11 @@ def test_get_config(client: TestClient) -> None:
 def test_update_config(
     client: TestClient, controller: MagicMock, animation: dict[str, object]
 ) -> None:
-    """The API saves the new animation and reloads the controller."""
+    """The API saves the new animation and reloads the controller.
+
+    §F/configuration/config-api/000059
+    §F/lighting/render/000043
+    """
     response = client.put(
         "/api/config/", json={**CONFIG_DATA, "animation": animation}, headers=HEADERS
     )
@@ -151,7 +161,10 @@ def test_update_config_with_audio_animations(
 
 
 def test_update_config_rejects_a_bad_audio_parameter(client: TestClient) -> None:
-    """A value out of range or an unknown source gives 422."""
+    """A value out of range or an unknown source gives 422.
+
+    §F/lighting/animation-config/000046
+    """
     for animation in (
         {"beat_switch": {"beats_per_switch": 0}},
         {"level": {"source": "loudness"}},
@@ -167,7 +180,11 @@ def test_update_config_rejects_a_bad_audio_parameter(client: TestClient) -> None
 def test_update_config_keeps_the_audio_section(
     client: TestClient, controller: MagicMock
 ) -> None:
-    """A new animation keeps the audio section of the file, and no section stays."""
+    """A new animation keeps the audio section of the file, and no section stays.
+
+    §F/configuration/config-api/000059
+    §F/configuration/config-api/000060
+    """
     _ = client.put("/api/config/", json=CONFIG_DATA, headers=HEADERS)
     assert "audio" not in yaml.safe_load(CONFIG.path.read_text())
 
@@ -183,7 +200,10 @@ def test_update_config_keeps_the_audio_section(
 
 
 def test_animations_endpoint_lists_the_audio_animations(client: TestClient) -> None:
-    """The editor gets the audio animations with their parameters."""
+    """The editor gets the audio animations with their parameters.
+
+    §F/web-ui/editor/000092
+    """
     response = client.get("/api/animations/", headers=HEADERS)
     by_name = {a["name"]: a for a in response.json()}
 
@@ -195,9 +215,59 @@ def test_animations_endpoint_lists_the_audio_animations(client: TestClient) -> N
 
 
 def test_audio_data_without_capture(client: TestClient) -> None:
-    """The audio endpoint gives silence when no microphone thread runs."""
+    """The audio endpoint gives silence when no microphone thread runs.
+
+    §F/live/data/000086
+    """
     response = client.get("/api/data/audio", headers=HEADERS)
 
     assert response.status_code == 200
     assert response.json()["capturing"] is False
     assert response.json()["since_beat"] is None
+
+
+def test_api_without_a_server_key_gives_500(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With no API_KEY on the server, a request gets 500, also with a key.
+
+    §NF/security/access/000095
+    """
+    monkeypatch.delenv("API_KEY")
+
+    assert client.get("/api/config/").status_code == 500
+    assert client.get("/api/config/", headers={"X-API-Key": ""}).status_code == 500
+
+
+def test_live_data_is_empty_before_the_controller_starts(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Persons, LEDs and rates are empty while no controller runs.
+
+    §F/live/data/000087
+    """
+    monkeypatch.setattr(STATE, "led_controller", None)
+
+    assert client.get("/api/data/objects", headers=HEADERS).json() == []
+    assert client.get("/api/data/leds", headers=HEADERS).json() == {}
+    assert set(client.get("/api/data/fps", headers=HEADERS).json().values()) == {0}
+
+
+def test_fps_gives_the_frame_times_in_milliseconds(
+    client: TestClient, controller: MagicMock
+) -> None:
+    """The rates endpoint gives the frame times in ms with two decimals.
+
+    §F/lighting/render/000044
+    """
+    controller.fps = 59.123456
+    controller.tpf_min = 0.0123456
+    controller.tpf_max = 0.05
+    controller.tpf_avg = 0.016912
+
+    data = client.get("/api/data/fps", headers=HEADERS).json()
+
+    assert data["fps"] == 59.12
+    assert data["tpf_min"] == 12.35
+    assert data["tpf_max"] == 50.0
+    assert data["tpf_avg"] == 16.91

@@ -2,7 +2,7 @@
 id: "000024"
 title: Code refers to a rule with the § sign
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

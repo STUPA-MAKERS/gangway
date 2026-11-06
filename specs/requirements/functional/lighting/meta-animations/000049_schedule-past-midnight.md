@@ -2,7 +2,7 @@
 id: "000049"
 title: A schedule window can go past midnight
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

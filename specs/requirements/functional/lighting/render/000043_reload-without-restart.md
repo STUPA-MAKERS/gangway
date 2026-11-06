@@ -2,7 +2,7 @@
 id: "000043"
 title: A new animation applies without a restart
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

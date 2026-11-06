@@ -19,14 +19,20 @@ infinite: .inf
 
 
 def test_times_of_day_stay_strings() -> None:
-    """Read an unquoted time of day as a string, not a base 60 number."""
+    """Read an unquoted time of day as a string, not a base 60 number.
+
+    §F/lighting/animation-config/000048
+    """
     data = yaml.load(DOCUMENT, Loader=GangwayLoader)
     assert data["time"] == "13:30"
     assert data["long_time"] == "18:00:00"
 
 
 def test_other_values_load_as_with_safe_load() -> None:
-    """Read every other value as `yaml.safe_load` does."""
+    """Read every other value as `yaml.safe_load` does.
+
+    §F/lighting/animation-config/000048
+    """
     ours = yaml.load(DOCUMENT, Loader=GangwayLoader)
     theirs = yaml.safe_load(DOCUMENT)
     assert {k: v for k, v in ours.items() if "time" not in k} == {
@@ -35,7 +41,10 @@ def test_other_values_load_as_with_safe_load() -> None:
 
 
 def test_dumped_times_load_back_unchanged() -> None:
-    """Write a time of day and read it back as the same string."""
+    """Write a time of day and read it back as the same string.
+
+    §F/lighting/animation-config/000048
+    """
     assert yaml.load(yaml.dump({"start": "13:30"}), Loader=GangwayLoader) == {
         "start": "13:30"
     }

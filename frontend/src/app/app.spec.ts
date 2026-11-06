@@ -53,6 +53,7 @@ describe('App', () => {
     expect(screen.queryByText('The page')).not.toBeInTheDocument();
   });
 
+  // §F/web-ui/access/000089
   it('asks for the key when the backend refuses it', async () => {
     await setup('locked');
     expect(screen.getByRole('heading', { name: 'API key' })).toBeInTheDocument();

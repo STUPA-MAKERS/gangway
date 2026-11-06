@@ -2,7 +2,7 @@
 id: "000042"
 title: All LEDs of a frame get the same time and context
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

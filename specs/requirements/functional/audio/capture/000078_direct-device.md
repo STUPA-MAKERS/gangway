@@ -2,7 +2,7 @@
 id: "000078"
 title: The capture prefers the direct hardware device
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

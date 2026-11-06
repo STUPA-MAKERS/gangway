@@ -2,7 +2,7 @@
 id: "000076"
 title: A capture error gives silence and a retry
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

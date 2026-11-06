@@ -2,7 +2,7 @@
 id: "000081"
 title: Sound below the noise floor is silence
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

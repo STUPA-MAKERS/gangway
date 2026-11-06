@@ -2,9 +2,11 @@
 id: "000061"
 title: GANGWAY_CONFIG names the config file
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
+tests:
+  - "tests/test_repository.py:test_gangway_config_names_the_config_file"
 implementation:
   - gangway/config.py
 scope:
@@ -19,4 +21,4 @@ must read `config.yaml` in the repository root.
 
 Reason: The presets folder is next to the config file, and modules find it at import time.
 
-Test: Review.
+Test: `tests/test_repository.py:test_gangway_config_names_the_config_file`.

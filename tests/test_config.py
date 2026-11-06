@@ -45,7 +45,10 @@ def config_path(tmp_path: Path) -> Path:
 
 
 def test_load_config(config_path: Path) -> None:
-    """The loader reads all sections and applies the strip offset."""
+    """The loader reads all sections and applies the strip offset.
+
+    §F/lighting/layout/000041
+    """
     cfg = GANGWAYConfig(config_path)
 
     assert len(cfg.SRC_POINTS) == 4
@@ -78,7 +81,10 @@ def test_save_config(config_path: Path) -> None:
 
 
 def test_audio_section(config_path: Path) -> None:
-    """A missing audio section gives the defaults, and a section sets them."""
+    """A missing audio section gives the defaults, and a section sets them.
+
+    §F/audio/settings/000079
+    """
     assert AudioSettings() == GANGWAYConfig(config_path).AUDIO
 
     config_path.write_text(

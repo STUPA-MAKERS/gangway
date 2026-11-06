@@ -2,9 +2,11 @@
 id: "000096"
 title: The sensor client reads only fixed read-only paths
 kind: non-functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
+tests:
+  - "tests/test_sensor_stats.py:test_client_sends_only_get_to_the_read_only_paths"
 implementation:
   - gangway/xovis/sensor_api.py
 scope:
@@ -18,4 +20,4 @@ The sensor client must send only `GET` requests. It must use only these paths:
 
 Reason: Some paths of the sensor reset or reboot it, also on `GET`.
 
-Test: Review.
+Test: `tests/test_sensor_stats.py:test_client_sends_only_get_to_the_read_only_paths`.

@@ -2,7 +2,7 @@
 id: "000045"
 title: An animation config names one function
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

@@ -40,7 +40,10 @@ def test_interpolate_rgbcct() -> None:
 
 
 def test_interpolate_points() -> None:
-    """The first of ten parts of a line has its center at 5 percent."""
+    """The first of ten parts of a line has its center at 5 percent.
+
+    §F/lighting/layout/000041
+    """
     # Point subtraction is reversed (other - self), so p1 - p2 is p2 - p1.
     res = interpolate_points(Point(0, 0), Point(10, 10), 10, 0)
     assert math.isclose(res.x, 0.5)
@@ -54,14 +57,20 @@ def test_to_hex() -> None:
 
 
 def test_parse_animation_simple_color() -> None:
-    """A mapping with r, g and b is a color."""
+    """A mapping with r, g and b is a color.
+
+    §F/lighting/animation-config/000045
+    """
     res = parse_animation({"r": 255, "g": 0, "b": 0, "ww": 0, "cw": 0}, {})
     assert isinstance(res, RGBCCT)
     assert res.r == 255
 
 
 def test_parse_animation_function() -> None:
-    """The config calls a function with scalar, keyword and nested arguments."""
+    """The config calls a function with scalar, keyword and nested arguments.
+
+    §F/lighting/animation-config/000045
+    """
 
     def my_anim(color: object, brightness: float = 1.0) -> tuple[object, float]:
         return (color, brightness)
@@ -79,13 +88,19 @@ def test_parse_animation_function() -> None:
 
 
 def test_parse_animation_unknown_function() -> None:
-    """An unknown function name raises ValueError."""
+    """An unknown function name raises ValueError.
+
+    §F/lighting/animation-config/000046
+    """
     with pytest.raises(ValueError, match="Unknown animation function"):
         parse_animation({"unknown": {}}, {})
 
 
 def test_parse_animation_unknown_param() -> None:
-    """An unknown parameter name raises ValueError."""
+    """An unknown parameter name raises ValueError.
+
+    §F/lighting/animation-config/000046
+    """
 
     def my_anim(val: object) -> object:
         return val
@@ -95,7 +110,10 @@ def test_parse_animation_unknown_param() -> None:
 
 
 def test_parse_animation_var_positional() -> None:
-    """A list for a variadic parameter gives the positional arguments."""
+    """A list for a variadic parameter gives the positional arguments.
+
+    §F/lighting/animation-config/000047
+    """
 
     def my_seq(*args: object) -> list[object]:
         return list(args)

@@ -2,7 +2,7 @@
 id: "000059"
 title: The config API changes only the animation
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

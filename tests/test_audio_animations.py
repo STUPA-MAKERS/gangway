@@ -164,7 +164,10 @@ def test_audio_gain_scales_the_brightness(
 
 
 def test_audio_animations_are_in_the_registry() -> None:
-    """The config can build the audio animations by name."""
+    """The config can build the audio animations by name.
+
+    §S/backend/animations/000035
+    """
     anim = as_animation(
         parse_animation(
             {
@@ -187,7 +190,11 @@ def test_audio_animations_are_in_the_registry() -> None:
 def test_controller_moves_beats_to_the_animation_clock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The controller gives one time per frame and beats on that clock."""
+    """The controller gives one time per frame and beats on that clock.
+
+    §F/audio/analysis/000085
+    §F/lighting/render/000042
+    """
     monkeypatch.setattr(led_controller, "PixelStrip", MagicMock())
     beat = time.monotonic() - 0.5
     controller = led_controller.LEDController(

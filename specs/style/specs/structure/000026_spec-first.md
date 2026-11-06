@@ -2,7 +2,7 @@
 id: "000026"
 title: A change request starts as a spec
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

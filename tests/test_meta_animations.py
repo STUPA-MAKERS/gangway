@@ -157,7 +157,10 @@ def test_proximity_speed_rejects_an_invalid_mode(ctx: SceneContext, led: LED) ->
 def test_schedule_window_past_midnight(
     ctx: SceneContext, led: LED, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Schedule shows the primary animation inside a range past midnight."""
+    """Schedule shows the primary animation inside a range past midnight.
+
+    §F/lighting/meta-animations/000049
+    """
 
     class FakeDateTime(datetime.datetime):
         now_value: ClassVar[datetime.datetime] = datetime.datetime(2026, 1, 1, 23, 0)
@@ -252,7 +255,10 @@ def test_schedule_with_an_invalid_range_uses_the_default(
     start: object,
     end: object,
 ) -> None:
-    """A range that is not two HH:MM strings gives 18:00 to 06:00."""
+    """A range that is not two HH:MM strings gives 18:00 to 06:00.
+
+    §F/lighting/meta-animations/000050
+    """
 
     class FakeDateTime(datetime.datetime):
         @classmethod

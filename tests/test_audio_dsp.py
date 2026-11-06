@@ -34,7 +34,10 @@ def _run(signal: dsp.Samples, bass_gain: float = 1.0) -> list[AudioState]:
 
 
 def test_silence_gives_no_level_and_no_beats() -> None:
-    """Silence keeps all values at 0 and detects no beats."""
+    """Silence keeps all values at 0 and detects no beats.
+
+    §F/audio/analysis/000081
+    """
     last = _run(np.zeros(2 * RATE))[-1]
     assert (last.level, last.bass, last.mid, last.treble) == (0, 0, 0, 0)
     assert last.beat_count == 0
@@ -42,7 +45,10 @@ def test_silence_gives_no_level_and_no_beats() -> None:
 
 
 def test_quiet_noise_below_the_floor_stays_silent() -> None:
-    """Noise below the noise floor gives a level of 0."""
+    """Noise below the noise floor gives a level of 0.
+
+    §F/audio/analysis/000081
+    """
     rng = np.random.default_rng(1)
     last = _run(rng.normal(0, 0.002, 2 * RATE))[-1]
     assert last.level == 0
@@ -50,7 +56,10 @@ def test_quiet_noise_below_the_floor_stays_silent() -> None:
 
 
 def test_bass_tone_raises_bass_not_treble() -> None:
-    """An 80 Hz tone gives bass energy and no treble energy."""
+    """An 80 Hz tone gives bass energy and no treble energy.
+
+    §S/shared/testing/000031
+    """
     last = _run(_tone(80, 1.0))[-1]
     assert last.bass > 0.9
     assert last.treble < 0.05
@@ -99,7 +108,10 @@ def test_agc_is_zero_at_the_floor() -> None:
 
 
 def test_bass_gain_lifts_quiet_bass_above_the_floor() -> None:
-    """A quiet bass tone is silent without the gain and shows with it."""
+    """A quiet bass tone is silent without the gain and shows with it.
+
+    §F/audio/analysis/000082
+    """
     signal = _tone(60, 2.0, amplitude=0.008)
     plain = _run(signal)[-1]
     lifted = _run(signal, bass_gain=4.0)[-1]
@@ -110,7 +122,10 @@ def test_bass_gain_lifts_quiet_bass_above_the_floor() -> None:
 
 
 def test_bass_gain_only_scales_the_bass_bands() -> None:
-    """The gain applies to the spectrum bands below the bass end only."""
+    """The gain applies to the spectrum bands below the bass end only.
+
+    §F/audio/analysis/000082
+    """
     params = dsp.make_params(RATE, BLOCK, bass_gain=4.0)
     assert params.spectrum_gains == (4.0, 4.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
@@ -128,6 +143,9 @@ def test_step_keeps_the_given_beats() -> None:
 
 
 def test_tempo_needs_enough_beats() -> None:
-    """The tempo is 0 with too few beats in the window."""
+    """The tempo is 0 with too few beats in the window.
+
+    §F/audio/analysis/000083
+    """
     assert dsp.tempo((1.0, 1.5), 2.0) == 0
     assert math.isclose(dsp.tempo((1.0, 1.5, 2.0, 2.5), 2.5), 120)

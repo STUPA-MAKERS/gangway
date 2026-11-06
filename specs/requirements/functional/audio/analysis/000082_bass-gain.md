@@ -2,7 +2,7 @@
 id: "000082"
 title: The bass gain scales only the bass bands
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

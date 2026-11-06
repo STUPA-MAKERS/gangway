@@ -2,7 +2,7 @@
 id: "000037"
 title: An audio animation computes frame values once
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

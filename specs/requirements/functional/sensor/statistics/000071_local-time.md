@@ -2,7 +2,7 @@
 id: "000071"
 title: Days and weeks use the local timezone
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

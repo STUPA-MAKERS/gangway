@@ -2,7 +2,7 @@
 id: "000089"
 title: A refused key opens the key prompt
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

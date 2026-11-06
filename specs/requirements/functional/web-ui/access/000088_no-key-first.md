@@ -2,7 +2,7 @@
 id: "000088"
 title: The web UI sends no key first
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

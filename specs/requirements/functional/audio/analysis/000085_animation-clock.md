@@ -2,7 +2,7 @@
 id: "000085"
 title: Beat times use the animation clock
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

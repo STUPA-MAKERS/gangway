@@ -2,9 +2,11 @@
 id: "000087"
 title: Live data is empty before the controller starts
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
+tests:
+  - "tests/test_api.py:test_live_data_is_empty_before_the_controller_starts"
 implementation:
   - gangway/api/data.py
 scope:
@@ -16,4 +18,4 @@ scope:
 Before the LED controller starts, `GET /api/data/objects` must give `[]`, `GET /api/data/leds`
 must give `{}` and `GET /api/data/fps` must give 0 for each value.
 
-Test: Review.
+Test: `tests/test_api.py:test_live_data_is_empty_before_the_controller_starts`.

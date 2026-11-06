@@ -2,7 +2,7 @@
 id: "000031"
 title: The sound analysis is tested with synthetic signals
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

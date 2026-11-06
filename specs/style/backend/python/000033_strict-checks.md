@@ -2,7 +2,7 @@
 id: "000033"
 title: Python code passes ruff and strict basedpyright
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

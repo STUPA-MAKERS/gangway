@@ -2,9 +2,11 @@
 id: "000065"
 title: An older event does not move a person
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
+tests:
+  - "tests/test_xovis.py:test_an_older_event_does_not_move_the_person"
 implementation:
   - gangway/xovis/server.py
 scope:
@@ -18,4 +20,4 @@ change the position of the person.
 
 Reason: The sensor can deliver events out of order.
 
-Test: Review.
+Test: `tests/test_xovis.py:test_an_older_event_does_not_move_the_person`.

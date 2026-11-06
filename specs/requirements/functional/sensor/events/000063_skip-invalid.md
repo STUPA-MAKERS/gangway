@@ -2,7 +2,7 @@
 id: "000063"
 title: An invalid event item is skipped
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

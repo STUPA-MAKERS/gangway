@@ -2,7 +2,7 @@
 id: "000080"
 title: An invalid audio setting is refused
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

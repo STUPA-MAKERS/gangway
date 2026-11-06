@@ -2,7 +2,7 @@
 id: "000048"
 title: Times of day stay strings in YAML
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

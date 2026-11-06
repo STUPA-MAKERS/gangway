@@ -24,6 +24,7 @@ describe('apiKeyInterceptor', () => {
 
   afterEach(() => backend.verify());
 
+  // §F/web-ui/access/000088
   it('sends no key while none is stored, so nginx can add it', () => {
     http.get('/api/config/').subscribe();
     const req = backend.expectOne('/api/config/');
@@ -31,6 +32,7 @@ describe('apiKeyInterceptor', () => {
     req.flush({});
   });
 
+  // §F/web-ui/access/000088
   it('sends the stored key', () => {
     keys.set('secret');
     http.get('/api/config/').subscribe();
@@ -40,6 +42,7 @@ describe('apiKeyInterceptor', () => {
     req.flush({});
   });
 
+  // §F/web-ui/access/000089
   it('marks the key as refused on 403', () => {
     http.get('/api/config/').subscribe({ error: () => undefined });
     backend.expectOne('/api/config/').flush({ detail: 'Invalid API Key' }, { status: 403, statusText: 'Forbidden' });

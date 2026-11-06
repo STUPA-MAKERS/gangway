@@ -2,7 +2,7 @@
 id: "000040"
 title: A frontend change passes build, test and lint
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

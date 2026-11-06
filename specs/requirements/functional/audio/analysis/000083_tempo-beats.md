@@ -2,7 +2,7 @@
 id: "000083"
 title: A tempo needs four beats in eight seconds
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

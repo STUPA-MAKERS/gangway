@@ -2,7 +2,7 @@
 id: "000047"
 title: A variadic parameter takes a list
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

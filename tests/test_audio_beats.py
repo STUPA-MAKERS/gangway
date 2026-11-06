@@ -46,14 +46,20 @@ def _near(beats: list[float], time: float) -> bool:
 
 
 def test_steady_kicks_give_a_steady_grid() -> None:
-    """After a few seconds, each kick gives one beat at the kick time."""
+    """After a few seconds, each kick gives one beat at the kick time.
+
+    §S/shared/testing/000031
+    """
     beats = [b for b in _beats(_kicks(GRID, 20.0)) if b > 8]
     assert all(_near(beats, kick) for kick in GRID if 8 < kick < 19.5)
     assert all(abs(b - a - PERIOD) <= 0.03 for a, b in pairwise(beats))
 
 
 def test_a_missing_kick_still_gives_a_beat() -> None:
-    """The grid goes on where a kick is missing."""
+    """The grid goes on where a kick is missing.
+
+    §F/audio/analysis/000084
+    """
     missing = (15.1, 17.1)
     kicks = tuple(k for k in GRID if all(abs(k - m) > 0.01 for m in missing))
     beats = _beats(_kicks(kicks, 20.0))
@@ -61,7 +67,10 @@ def test_a_missing_kick_still_gives_a_beat() -> None:
 
 
 def test_a_kick_off_the_grid_gives_no_beat() -> None:
-    """A single kick between two beats of the grid gives no beat."""
+    """A single kick between two beats of the grid gives no beat.
+
+    §F/audio/analysis/000084
+    """
     extra = (14.35, 16.85)
     beats = _beats(_kicks(tuple(sorted((*GRID, *extra))), 20.0))
     assert not any(_near(beats, e) for e in extra)

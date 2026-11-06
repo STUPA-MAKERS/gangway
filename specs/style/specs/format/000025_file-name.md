@@ -2,7 +2,7 @@
 id: "000025"
 title: The file name is number and name
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

@@ -2,7 +2,7 @@
 id: "000023"
 title: Product terms stay as the UI and the config show them
 kind: style
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

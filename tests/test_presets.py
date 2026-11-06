@@ -30,14 +30,21 @@ def state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_preset_reads_presets_next_to_config(state_dir: Path) -> None:
-    """Load a preset from the presets folder next to the config file."""
+    """Load a preset from the presets folder next to the config file.
+
+    §F/lighting/meta-animations/000051
+    §F/presets/library/000052
+    """
     (state_dir / "presets" / "Blue.yaml").write_text(BLUE_PRESET_YAML)
 
     assert preset("Blue") == RGBCCT(b=255)
 
 
 def test_missing_preset_turns_leds_off(state_dir: Path) -> None:
-    """Turn the LEDs off for a preset that has no file."""
+    """Turn the LEDs off for a preset that has no file.
+
+    §F/lighting/meta-animations/000051
+    """
     assert not (state_dir / "presets" / "Missing.yaml").exists()
 
     assert preset("Missing") == RGBCCT()
@@ -58,7 +65,10 @@ def test_config_with_preset_animation_loads(state_dir: Path) -> None:
     ids=lambda p: p.stem,
 )
 def test_shipped_preset_renders(path: Path) -> None:
-    """Parse each preset that the package installs and render one LED."""
+    """Parse each preset that the package installs and render one LED.
+
+    §F/presets/library/000057
+    """
     with open(path) as f:
         data = yaml.load(f, Loader=GangwayLoader)
     animation = as_animation(parse_animation(data, ANIMATION_FUNCTIONS))

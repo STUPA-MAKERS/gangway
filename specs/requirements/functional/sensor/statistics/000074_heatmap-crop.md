@@ -2,7 +2,7 @@
 id: "000074"
 title: The heat map is cropped to its picture
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 tests:

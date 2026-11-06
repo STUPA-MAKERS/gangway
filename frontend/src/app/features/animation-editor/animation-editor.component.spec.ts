@@ -32,6 +32,7 @@ async function setup(value: unknown) {
 }
 
 describe('AnimationEditorComponent', () => {
+  // §F/web-ui/editor/000092
   it('shows the parameters of the animation from the schema', async () => {
     await setup({ beat_pulse: { decay: 0.5 } });
     expect(screen.getByText('Flashes all LEDs on each beat and fades out.')).toBeInTheDocument();
@@ -45,6 +46,7 @@ describe('AnimationEditorComponent', () => {
     expect(changed).toHaveBeenLastCalledWith({ beat_pulse: { decay: 0.75 } });
   });
 
+  // §F/web-ui/editor/000093
   it('removes a cleared number, so the backend default applies', async () => {
     const changed = await setup({ beat_pulse: { decay: 0.5 } });
     fireEvent.input(screen.getByLabelText('Decay'), { target: { value: '' } });

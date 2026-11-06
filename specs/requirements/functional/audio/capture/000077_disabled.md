@@ -2,7 +2,7 @@
 id: "000077"
 title: A disabled capture does not open the microphone
 kind: functional
-status: draft
+status: approved
 owner: frederikbeimgraben
 updated: 2026-11-06
 implementation:

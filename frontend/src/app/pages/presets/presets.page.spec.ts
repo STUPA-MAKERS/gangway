@@ -38,6 +38,7 @@ describe('PresetsPage', () => {
     expect(await screen.findByRole('heading', { name: 'Musik' })).toBeInTheDocument();
   });
 
+  // §F/presets/library/000055
   it('loads a preset and reads the config again', async () => {
     const { backend } = await setup('Musik');
     backend.expectOne('/api/presets/Musik').flush({ name: 'Musik', animation: { off: {} } });
@@ -60,6 +61,7 @@ describe('PresetsPage', () => {
 });
 
 describe('nameError', () => {
+  // §F/presets/library/000053
   it('accepts the characters of the backend', () => {
     expect(nameError('My preset-1_a')).toBe('');
     expect(nameError('')).toBe('');

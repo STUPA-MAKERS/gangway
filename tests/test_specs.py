@@ -11,6 +11,7 @@ def test_specs_follow_the_rules_for_specs() -> None:
     """The specs, the index and the `§` references pass the checks.
 
     §S/specs/structure/000013
+    §S/shared/testing/000030
     """
     result = subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "check_specs.py")],
